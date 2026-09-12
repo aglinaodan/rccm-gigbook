@@ -789,9 +789,9 @@ button:active::after { background: rgba(255,255,255,0.12); }
   </button>
 
   <!-- FLOATING SEARCH + FILTER (top-right, per-tab) -->
-  <div id="header-actions" style="position:fixed;top:calc(14px + env(safe-area-inset-top,0px));right:14px;z-index:400;display:flex;align-items:center;gap:8px;transition:opacity 0.22s var(--ease-smooth), transform 0.22s var(--ease-smooth);">
+  <div id="header-actions" style="position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:var(--view-px);right:var(--view-px);z-index:400;display:flex;align-items:center;gap:8px;transition:opacity 0.22s var(--ease-smooth), transform 0.22s var(--ease-smooth);">
     <!-- Always-open search pill -->
-    <div id="header-search-pill" style="display:flex;align-items:center;background:var(--surface-1);border:1px solid var(--border-color);border-radius:23px;box-shadow:0 2px 10px rgba(60,30,30,0.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;height:46px;width:180px;transition:width 0.25s ease;">
+    <div id="header-search-pill" style="display:flex;align-items:center;background:var(--surface-1);border:1px solid var(--border-color);border-radius:23px;box-shadow:0 2px 10px rgba(60,30,30,0.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;height:46px;flex:1;min-width:0;">
       <button id="header-search-btn" onclick="document.getElementById('header-search-input').focus()" style="width:42px;min-width:42px;height:46px;background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <iconify-icon icon="mdi:magnify" style="font-size:20px;"></iconify-icon>
       </button>
@@ -2426,21 +2426,14 @@ function updateHomeBtn(show) {
               || activeTab === 'admin';
   const shouldShow = show && !atRoot;
   if (backBtn) backBtn.style.display = shouldShow ? 'flex' : 'none';
-  // Expand search pill width based on back button visibility
-  const pill = document.getElementById('header-search-pill');
-  if (pill) {
-    if (shouldShow) {
-      // Back button visible: leave space for it (left:14px + 46px wide + 8px gap = 68px from left)
-      // Pill right-anchored: width = 100vw - right(14) - gap(8) - filter(46) - gap(8) - backBtn(46) - left(14) = 100vw - 136px
-      pill.style.width = 'calc(100vw - 136px)';
-    } else {
-      // Back button hidden: pill can stretch all the way left (right:14 + gap:8 + filter:46 + gap:8 + left:14 = 90px)
-      pill.style.width = 'calc(100vw - 90px)';
-    }
+  // Shift the whole search/filter row right when the back button is visible, so it
+  // doesn't overlap it; otherwise align flush with the list's left inset below.
+  const actions = document.getElementById('header-actions');
+  if (actions) {
+    actions.style.left = shouldShow ? 'calc(14px + 46px + 8px)' : 'var(--view-px)';
   }
 
   // Hide search/filter when drilling into detail or on admin tab
-  const actions = document.getElementById('header-actions');
   const songSheetOpen = document.getElementById('song-sheet-view')?.style.display === 'block';
   if (actions) {
     const hideIt = activeTab === 'admin' || songSheetOpen;
