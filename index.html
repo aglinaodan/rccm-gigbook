@@ -1463,7 +1463,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button onclick="setIntakeMode('text')" id="intake-text-btn" class="btn-primary btn-text" style="flex:1;min-width:80px;">Text</button>
           <button onclick="setIntakeMode('file')" id="intake-file-btn" class="btn-secondary btn-text" style="flex:1;min-width:80px;">File</button>
-          <button onclick="setIntakeMode('camera')" id="intake-camera-btn" class="btn-secondary btn-text" style="flex:1;min-width:80px;">Camera</button>
+          <button onclick="setIntakeMode('link')" id="intake-link-btn" class="btn-secondary btn-text" style="flex:1;min-width:80px;">Link</button>
         </div>
       </div>
     </div>
@@ -1488,22 +1488,19 @@ button:active::after { background: rgba(255,255,255,0.12); }
         </div>
       </div>
 
-      <!-- Add mode: camera intake -->
-      <div id="intake-camera-area" style="display:none;flex:1;overflow-y:auto;min-height:80px;">
+      <!-- Add mode: link intake -->
+      <div id="intake-link-area" style="display:none;flex:1;overflow-y:auto;min-height:80px;">
         <div style="background:var(--surface-1);border-radius:10px;padding:20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;">
-          <div id="camera-preview-wrap" style="display:none;width:100%;max-height:180px;border-radius:8px;overflow:hidden;border:1px solid var(--border-subtle);">
-            <img id="camera-preview-img" style="width:100%;height:100%;object-fit:contain;display:block;" />
-          </div>
-          <iconify-icon id="camera-idle-icon" icon="mdi:camera" style="font-size:40px;color:var(--accent);"></iconify-icon>
-          <p id="camera-idle-text" style="color:var(--text-secondary);font-size:13px;margin:0;line-height:1.5;">Capture a photo of your chord sheet. The text will be extracted automatically.</p>
-          <div id="camera-status" style="display:none;align-items:center;gap:8px;color:var(--text-secondary);font-size:13px;">
+          <iconify-icon id="link-idle-icon" icon="mdi:link-variant" style="font-size:40px;color:var(--accent);"></iconify-icon>
+          <p id="link-idle-text" style="color:var(--text-secondary);font-size:13px;margin:0;line-height:1.5;">Paste a link to a chord sheet page. We'll pull the title, artist, key, and chords automatically.</p>
+          <input type="url" class="input-field" id="link-url-input" placeholder="https://tabs.ultimate-guitar.com/..." style="width:100%;" oninput="_updateLinkImportBtn()" />
+          <div id="link-status" style="display:none;align-items:center;gap:8px;color:var(--text-secondary);font-size:13px;">
             <div class="spinner" style="width:18px;height:18px;border-width:2px;flex-shrink:0;"></div>
-            <span id="camera-status-text">Extracting text…</span>
+            <span id="link-status-text">Fetching link…</span>
           </div>
-          <input type="file" id="camera-file-input" accept="image/*" capture="environment" style="display:none;" onchange="handleCameraCapture(this)" />
-          <button id="camera-open-btn" class="btn-primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="document.getElementById('camera-file-input').click()">
-            <iconify-icon icon="mdi:camera" style="font-size:18px;"></iconify-icon>
-            Open Camera
+          <button id="link-import-btn" class="btn-primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="handleLinkImport()" disabled>
+            <iconify-icon icon="mdi:link-variant" style="font-size:18px;"></iconify-icon>
+            Import from Link
           </button>
         </div>
       </div>
@@ -3923,6 +3920,16 @@ function openCreateSongModal() {
   document.getElementById('new-song-title').value = '';
   document.getElementById('new-song-artist').value = '';
   document.getElementById('new-song-content').value = '';
+  const linkInput = document.getElementById('link-url-input');
+  if (linkInput) linkInput.value = '';
+  const linkStatus = document.getElementById('link-status');
+  if (linkStatus) linkStatus.style.display = 'none';
+  const linkIdleIcon = document.getElementById('link-idle-icon');
+  const linkIdleText = document.getElementById('link-idle-text');
+  if (linkIdleIcon) linkIdleIcon.style.display = 'block';
+  if (linkIdleText) linkIdleText.style.display = 'block';
+  const linkBtn = document.getElementById('link-import-btn');
+  if (linkBtn) { linkBtn.disabled = true; linkBtn.style.opacity = '1'; }
   const modal = document.getElementById('create-song-modal');
   modal.dataset.editId = '';
   // Show intake switcher, hide edit-only section
@@ -3955,7 +3962,7 @@ function openEditSongModal(songId) {
   modal.dataset.editId = songId;
   // Hide intake switcher + all intake content areas
   document.getElementById('intake-method-section').style.display = 'none';
-  ['intake-text-area','intake-file-area','intake-camera-area'].forEach(id => {
+  ['intake-text-area','intake-file-area','intake-link-area'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.style.display = 'none'; el.style.flex = ''; }
   });
@@ -3975,11 +3982,10 @@ function openEditSongModal(songId) {
 }
 function closeCreateSongModal() {
   _animateModalOut(document.getElementById('create-song-modal'));
-  stopCamera();
 }
 function setIntakeMode(mode) {
   currentIntakeMode = mode;
-  ['text','file','camera'].forEach(m => {
+  ['text','file','link'].forEach(m => {
     const area = document.getElementById(`intake-${m}-area`);
     // All intake areas use flex so textarea/drag-zone fills height properly
     if (m === mode) { area.style.display = 'flex'; area.style.flex = '1'; }
@@ -3988,90 +3994,92 @@ function setIntakeMode(mode) {
     btn.className = m === mode ? 'btn-primary btn-text' : 'btn-secondary btn-text';
     btn.style.flex = '1'; btn.style.minWidth = '80px';
   });
-  if (mode !== 'camera') stopCamera();
 }
 
-function handleCameraCapture(input) {
-  const file = input.files[0];
-  if (!file) return;
-  // Don't reset input.value yet — do it after we've read the file
-  // so iOS doesn't close the modal unexpectedly
+function _updateLinkImportBtn() {
+  const btn = document.getElementById('link-import-btn');
+  const input = document.getElementById('link-url-input');
+  if (!btn || !input) return;
+  const val = input.value.trim();
+  const looksLikeUrl = /^https?:\/\/.+/i.test(val);
+  btn.disabled = !looksLikeUrl;
+}
 
-  const previewWrap = document.getElementById('camera-preview-wrap');
-  const previewImg  = document.getElementById('camera-preview-img');
-  const idleIcon    = document.getElementById('camera-idle-icon');
-  const idleText    = document.getElementById('camera-idle-text');
-  const statusEl    = document.getElementById('camera-status');
-  const statusText  = document.getElementById('camera-status-text');
-  const openBtn     = document.getElementById('camera-open-btn');
+async function handleLinkImport() {
+  const urlInput   = document.getElementById('link-url-input');
+  const statusEl   = document.getElementById('link-status');
+  const statusText = document.getElementById('link-status-text');
+  const importBtn  = document.getElementById('link-import-btn');
+  const idleIcon   = document.getElementById('link-idle-icon');
+  const idleText   = document.getElementById('link-idle-text');
 
-  // Ensure the camera area stays visible while we process
-  const cameraArea = document.getElementById('intake-camera-area');
-  if (cameraArea) { cameraArea.style.display = 'flex'; cameraArea.style.flex = '1'; }
+  const url = (urlInput?.value || '').trim();
+  if (!/^https?:\/\/.+/i.test(url)) {
+    showAlert('Invalid Link', 'Please paste a full link starting with http:// or https://', 'mdi:alert-circle');
+    return;
+  }
 
-  const objectURL = URL.createObjectURL(file);
-  previewImg.src = objectURL;
-  previewWrap.style.display = 'block';
-  idleIcon.style.display    = 'none';
-  idleText.style.display    = 'none';
   statusEl.style.display    = 'flex';
-  statusText.textContent    = 'Extracting text…';
-  openBtn.disabled          = true;
-  openBtn.style.opacity     = '0.5';
+  statusText.textContent    = 'Fetching link…';
+  importBtn.disabled        = true;
+  importBtn.style.opacity   = '0.5';
+  if (idleIcon) idleIcon.style.display = 'none';
+  if (idleText) idleText.style.display = 'none';
 
-  // Reset the input after a short delay so iOS doesn't close things
-  setTimeout(() => { try { input.value = ''; } catch(e) {} }, 200);
+  try {
+    // Fetch a readable text version of the page (bypasses CORS on most sites)
+    const readerUrl = 'https://r.jina.ai/' + url;
+    const pageResp = await fetch(readerUrl);
+    if (!pageResp.ok) throw new Error(`Fetch error ${pageResp.status}`);
+    const pageText = (await pageResp.text()).slice(0, 15000);
 
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const base64Data = e.target.result.split(',')[1];
-      const mediaType  = file.type || 'image/jpeg';
+    statusText.textContent = 'Extracting song info…';
 
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-              { type: 'text', text: 'Extract all text from this chord sheet image exactly as written, reading from top to bottom, as plain monospace text. The most important detail: when a chord symbol sits above a specific word or syllable in the image, reproduce that exact horizontal alignment using spaces — count the approximate character columns from the left edge so the chord lands directly above the same letters it sits above in the source. Preserve chord symbols (e.g. G, Am, D/F#), section labels (VERSE, CHORUS, BRIDGE), lyric lines, blank lines between sections, and indentation exactly as shown. Do not collapse multiple spaces into one, and do not center or re-justify any line. Output only the raw chord sheet text — no commentary, no markdown, no code fences, no explanation.' }
-            ]
-          }]
-        })
-      });
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        messages: [{
+          role: 'user',
+          content: `Here is the extracted text of a webpage containing a song's chord sheet:\n\n---\n${pageText}\n---\n\nFrom this page, identify the Song Title, Artist, and Key (a single note like C, D#, F#, etc. — your best guess if not explicitly stated, or blank if truly undeterminable), and reproduce the full chord sheet content (chords + lyrics, with section labels like VERSE/CHORUS/BRIDGE) as plain monospace text, preserving chord-to-lyric alignment with spaces as closely as the source text allows.\n\nRespond with ONLY a raw JSON object, no markdown fences, no commentary, in exactly this shape:\n{"title": "...", "artist": "...", "key": "...", "content": "..."}`
+        }]
+      })
+    });
 
-      if (!response.ok) throw new Error(`API error ${response.status}`);
-      const data = await response.json();
-      const extracted = (data.content || []).map(b => b.text || '').join('').trim();
+    if (!response.ok) throw new Error(`API error ${response.status}`);
+    const data = await response.json();
+    const raw = (data.content || []).map(b => b.text || '').join('').trim();
+    const cleaned = raw.replace(/^```json\s*|^```\s*|```$/gi, '').trim();
+    const parsed = JSON.parse(cleaned);
 
-      URL.revokeObjectURL(objectURL);
-      // Now switch to text mode and populate the textarea
-      setIntakeMode('text');
-      document.getElementById('new-song-content').value = extracted;
-      _updateSaveSongBtn();
-    } catch (err) {
-      console.error('Camera OCR error:', err);
-      statusEl.style.display    = 'flex';
-      statusText.textContent    = 'Extraction failed.';
-      openBtn.disabled          = false;
-      openBtn.style.opacity     = '1';
-      openBtn.innerHTML = '<iconify-icon icon="mdi:camera-retake" style="font-size:18px;"></iconify-icon> Retake Photo';
-      showAlert('Camera Error', 'Could not extract text from the photo. Please retake or switch to Text mode and type manually.', 'mdi:alert-circle');
+    if (parsed.title) document.getElementById('new-song-title').value = parsed.title;
+    if (parsed.artist) document.getElementById('new-song-artist').value = parsed.artist;
+    if (parsed.key) {
+      const keySel = document.getElementById('new-song-key');
+      const match = Array.from(keySel.options).find(o => o.value.toUpperCase() === String(parsed.key).toUpperCase());
+      if (match) keySel.value = match.value;
     }
-  };
-  reader.readAsDataURL(file);
-}
 
-function stopCamera() {
-  // Camera uses system file picker — nothing to stop
+    // Switch to text mode and populate the chord sheet content
+    setIntakeMode('text');
+    document.getElementById('new-song-content').value = parsed.content || '';
+    _updateSaveSongBtn();
+  } catch (err) {
+    console.error('Link import error:', err);
+    statusEl.style.display  = 'flex';
+    statusText.textContent  = 'Import failed.';
+    importBtn.disabled      = false;
+    importBtn.style.opacity = '1';
+    if (idleIcon) idleIcon.style.display = 'block';
+    if (idleText) idleText.style.display = 'block';
+    showAlert('Link Import Error', 'Could not read that link. Please check the URL, or switch to Text mode and paste manually.', 'mdi:alert-circle');
+  }
 }
 
 async function _readPdfAsText(file) {
