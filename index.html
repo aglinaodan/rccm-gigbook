@@ -710,7 +710,6 @@ button:active::after { background: rgba(255,255,255,0.12); }
       </div>
     </div>
     <h1 style="color:var(--lyrics-color);font-size:22px;font-weight:700;margin:0 0 4px;">RCCM Gigbook</h1>
-    <p style="color:var(--text-muted);font-size:13px;margin:0;">Who are you today?</p>
   </div>
   <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:340px;">
     <button class="role-pick-btn" onclick="selectViewerRole('musician')">
@@ -729,7 +728,6 @@ button:active::after { background: rgba(255,255,255,0.12); }
       <iconify-icon icon="mdi:chevron-right" style="font-size:22px;color:var(--text-muted);"></iconify-icon>
     </button>
   </div>
-  <p style="color:var(--text-muted);font-size:11px;margin-top:24px;text-align:center;opacity:0.6;">Admin or Sub-Admin? Tap the logo 3× above.</p>
 </div>
 
 <!-- CUSTOM CONFIRM MODAL -->
@@ -1493,7 +1491,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
         <div style="background:var(--surface-1);border-radius:10px;padding:20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;">
           <iconify-icon id="link-idle-icon" icon="mdi:link-variant" style="font-size:40px;color:var(--accent);"></iconify-icon>
           <p id="link-idle-text" style="color:var(--text-secondary);font-size:13px;margin:0;line-height:1.5;">Paste a link to a chord sheet page. We'll pull the title, artist, key, and chords automatically.</p>
-          <input type="url" class="input-field" id="link-url-input" placeholder="https://tabs.ultimate-guitar.com/..." style="width:100%;" oninput="_updateLinkImportBtn()" />
+          <input type="url" class="input-field" id="link-url-input" placeholder="https://tabs.ultimate-guitar.com/..." style="width:100%;min-height:44px;padding:11px 12px;box-sizing:border-box;" oninput="_updateLinkImportBtn()" />
           <div id="link-status" style="display:none;align-items:center;gap:8px;color:var(--text-secondary);font-size:13px;">
             <div class="spinner" style="width:18px;height:18px;border-width:2px;flex-shrink:0;"></div>
             <span id="link-status-text">Fetching link…</span>
@@ -2000,6 +1998,25 @@ auth.onAuthStateChanged((user) => {
   bootApp();
 });
 
+// ── Self-heal a stale realtime connection ──────────────────────
+// Mobile browsers can silently let Firestore's live listeners go stale when a
+// tab is backgrounded, the screen locks, or the network blips — without this,
+// the only way to pick up changes (like a theme update) is a manual refresh.
+// Re-subscribing on focus/reconnect is cheap and fixes that without one.
+let _lastResubscribe = 0;
+function _resubscribeIfStale() {
+  if (!_bootDone) return;
+  const now = Date.now();
+  if (now - _lastResubscribe < 3000) return; // debounce rapid-fire events
+  _lastResubscribe = now;
+  if (typeof loadAdminSettings === 'function') loadAdminSettings();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _resubscribeIfStale();
+});
+window.addEventListener('online', _resubscribeIfStale);
+window.addEventListener('pageshow', (e) => { if (e.persisted) _resubscribeIfStale(); });
+
 async function bootApp() {
   // Load Sub-Admin PIN non-blocking
   db.collection('settings').doc('global').get()
@@ -2126,7 +2143,6 @@ function mountApp() {
     }
   });
   runTTLCleanup();
-  seedSongsIfEmpty();
   loadAdminSettings();
   checkForUpdates();
   // Ensure FAB is visible on first load
@@ -6472,54 +6488,6 @@ function applyTypographyData(typo) {
 // ============================================================
 // SETLIST FAB — CONTEXT ROUTING (handled via handleFabClick in HTML onclick)
 // ============================================================
-
-// ============================================================
-// SEEDING ROUTINE
-// ============================================================
-const SEED_SONGS = [
-  {
-    title: 'Christ Our Hope in Life and Death',
-    artist: 'Keith and Kristyn Getty, CityAlight, Sing! Matt Boswell, Matt Papa, Bryan Fowler, and Jordan Kauflin',
-    key: 'G',
-    content: `VERSE 1\nG       D/F#    Em      C\nWhat is our hope in life and death\nG/B       C          G      D\nChrist alone, Christ alone\nG        D/F#    Em    C\nWhat is our only confidence\nG/B       C         D\nThat our flesh and soul belong to Him\n\nPRE-CHORUS\nG                 C\nWho holds our days within His hand\nG                 C\nWhat comes apart from His command\nAm              C            D\nAnd what will keep us to the end\nG    D\nThe love of Christ in whom we stand\n\nCHORUS\nG         C\nO sing hallelujah\nG         D\nOur hope springs eternal\nG         C\nO sing hallelujah\nAm7    D        G\nNow and ever we confess\nChrist our hope in life and death\n\nVERSE 2\nG      D/F#    Em      C\nWhat truth can calm the troubled soul\nG/B      C        G     D\nGod is good, God is good\nG       D/F#   Em       C\nWhere is His grace and goodness known\nG/B        C            D\nIn our great Redeemer's blood\n\nBRIDGE\nEm       C\nUntil He returns or calls us home\nG         D\nHere in the love of Christ we stand`
-  },
-  {
-    title: 'Christ Our Treasure',
-    artist: 'Sovereign Grace Music',
-    key: 'D',
-    content: `VERSE 1\nD               A\nThere is a treasure hid in a field\nBm             G\nAnd all who find it sell all they yield\nD               A\nTo buy that field to gain what's real\nBm           G       A\nThe kingdom of God revealed\n\nCHORUS\nD          A          Bm    G\nChrist our treasure Christ our all\nD          A          G\nFor Him we live for Him we fall\nBm        A          G        D\nAll things are loss compared to Christ\nG             A           D\nOur hope our joy our paradise\n\nVERSE 2\nD              A\nOne pearl of great price found in the sea\nBm             G\nThe merchant sold all so he could be free\nD               A\nTo own that pearl beyond compare\nBm          G          A\nThe riches of God's grace so rare\n\nBRIDGE\nG              D\nOh what joy to know Him\nG             A\nOh what peace to trust\nBm          G\nAll we need is Jesus\nD          A       D\nChrist is more than enough`
-  },
-  {
-    title: 'His Mercy is More',
-    artist: 'Matt Boswell, Matt Papa, and Cochren and Co.',
-    key: 'A',
-    content: `VERSE 1\nA                E\nWhat love could remember no wrongs we have done\nF#m              D\nOmniscient all knowing He counts not their sum\nA                  E\nThrown into a sea without bottom or shore\nF#m         D         E\nOur sins they are many His mercy is more\n\nCHORUS\nA              D\nPraise the Lord His mercy is more\nA              E\nStronger than darkness new every morn\nF#m           D\nOur sins they are many His mercy is more\n\nVERSE 2\nA                E\nWhat patience would wait as we constantly roam\nF#m               D\nWhat Father so tender is calling us home\nA                E\nHe welcomes the weakest the vilest the poor\nF#m         D         E\nOur sins they are many His mercy is more\n\nVERSE 3\nA               E\nWhat riches of kindness He lavished on us\nF#m              D\nHis blood was the payment His life was the cost\nA               E\nWe stood 'neath a debt we could never afford\nF#m         D         E\nOur sins they are many His mercy is more\n\nBRIDGE\nF#m    D     A     E\nGreat is His faithfulness great is His love\nF#m    D       A      E\nFrom everlasting to everlasting above`
-  },
-  {
-    title: 'We Are Thankful',
-    artist: 'Sovereign Grace Music',
-    key: 'C',
-    content: `VERSE 1\nC              G\nWith grateful hearts we come to You\nAm             F\nWith voices raised in praise anew\nC                 G\nFor every blessing every grace\nAm          F        G\nWe stand amazed before Your face\n\nCHORUS\nC         G         Am    F\nWe are thankful we are grateful\nC         G              F\nFor Your love that never fails\nAm        G         F        C\nWe will sing of Your great mercy Lord\nF         G          C\nForever thankful for Your grace\n\nVERSE 2\nC              G\nFor life and breath and morning sun\nAm              F\nFor grace new every day begun\nC                 G\nFor family friends and community\nAm          F           G\nFor all You've done in history\n\nBRIDGE\nF          C\nTo You all glory all honor\nF          G\nTo You all worship and praise\nAm         F\nForever and ever we'll thank You\nC        G       C\nWe'll praise You all of our days`
-  }
-];
-
-async function seedSongsIfEmpty() {
-  try {
-    const snap = await db.collection('songs').limit(1).get();
-    if (snap.empty) {
-      const batch = db.batch();
-      SEED_SONGS.forEach(song => {
-        const ref = db.collection('songs').doc();
-        batch.set(ref, {
-          ...song,
-          createdBy: 'service' || 'system',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      });
-      await batch.commit();
-    }
-  } catch(e) { console.error('Seed error:', e); }
-}
 
 // ============================================================
 // TTL CLEANUP — Delete setlists older than admin-configured days
