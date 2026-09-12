@@ -4005,6 +4005,75 @@ function _updateLinkImportBtn() {
   btn.disabled = !looksLikeUrl;
 }
 
+function _decodeHtmlEntities(str) {
+  const ta = document.createElement('textarea');
+  ta.innerHTML = str;
+  return ta.value;
+}
+
+function _parseUltimateGuitar(html) {
+  // UG server-renders a big JSON blob in a data-content attribute; internal quotes are HTML-entity-encoded
+  const storeMatch = html.match(/class="js-store" data-content="([\s\S]*?)"\s*>/);
+  if (!storeMatch) return null;
+  let store;
+  try {
+    store = JSON.parse(_decodeHtmlEntities(storeMatch[1]));
+  } catch (e) { return null; }
+
+  // Recursively find the tab meta object and the raw chord-sheet content, since exact
+  // nesting varies a bit by page type (chords / official / pro / ukulele)
+  let meta = null, content = null;
+  (function walk(node) {
+    if (!node || typeof node !== 'object') return;
+    if (!meta && typeof node.song_name === 'string' && typeof node.artist_name === 'string') meta = node;
+    if (!content) {
+      if (typeof node.content === 'string' && /\[ch\]|\[tab\]/.test(node.content)) content = node.content;
+      else if (node.wiki_tab && typeof node.wiki_tab.content === 'string') content = node.wiki_tab.content;
+    }
+    for (const k in node) { if (!meta || !content) walk(node[k]); }
+  })(store);
+
+  if (!meta && !content) return null;
+  const plainContent = content ? content.replace(/\[ch\]/g, '').replace(/\[\/ch\]/g, '').replace(/\[tab\]/g, '').replace(/\[\/tab\]/g, '') : '';
+  return {
+    title: meta?.song_name || '',
+    artist: meta?.artist_name || '',
+    key: meta?.tonality_name || meta?.tonality || '',
+    content: plainContent
+  };
+}
+
+function _parseGeneric(html, url) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || doc.title || '';
+
+  let title = ogTitle.trim(), artist = '';
+  // Try common "Song - Artist" / "Song by Artist" / "Artist - Song Chords" patterns
+  let m = title.match(/^(.*?)\s*[-–]\s*(.*?)(\s+chords?|\s+tab)?$/i);
+  if (m) { title = m[1].trim(); artist = m[2].trim(); }
+  else {
+    m = ogTitle.match(/^(.*?)\s+by\s+(.*?)(\s+chords?|\s+tab)?$/i);
+    if (m) { title = m[1].trim(); artist = m[2].trim(); }
+  }
+  title = title.replace(/\s+chords?$/i, '').replace(/\s+tab$/i, '').trim();
+
+  const bodyText = doc.body ? doc.body.textContent : '';
+  const keyMatch = bodyText.match(/\bkey[:\s]+([A-G][#b]?)\b/i);
+  const key = keyMatch ? keyMatch[1] : '';
+
+  // Prefer the longest <pre> block (most chord/tab sites render the sheet in <pre>)
+  const pres = Array.from(doc.querySelectorAll('pre'));
+  let content = '';
+  if (pres.length) {
+    content = pres.reduce((a, b) => (b.textContent.length > a.textContent.length ? b : a)).textContent;
+  } else {
+    // Fallback: strip scripts/styles and use the visible text, trimmed to a reasonable length
+    doc.querySelectorAll('script,style,nav,header,footer').forEach(el => el.remove());
+    content = (doc.body?.textContent || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 4000);
+  }
+  return { title, artist, key, content: content.trim() };
+}
+
 async function handleLinkImport() {
   const urlInput   = document.getElementById('link-url-input');
   const statusEl   = document.getElementById('link-status');
@@ -4027,36 +4096,18 @@ async function handleLinkImport() {
   if (idleText) idleText.style.display = 'none';
 
   try {
-    statusText.textContent = 'Looking up song info…';
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const pageResp = await fetch(proxyUrl);
+    if (!pageResp.ok) throw new Error(`Fetch error ${pageResp.status}`);
+    const html = await pageResp.text();
+    if (!html || html.length < 200) throw new Error('Empty page content');
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{
-          role: 'user',
-          content: `Use your web search tool to open this exact page: ${url}\n\nIt contains a song's chord sheet. From the page content, identify the Song Title, Artist, and Key (a single note like C, D#, F#, etc. — your best guess if not explicitly stated, or blank if truly undeterminable), and reproduce the full chord sheet content (chords + lyrics, with section labels like VERSE/CHORUS/BRIDGE) as plain monospace text, preserving chord-to-lyric alignment with spaces as closely as the source allows.\n\nAfter you have the page content, respond with ONLY a raw JSON object as your final answer, no markdown fences, no commentary, in exactly this shape:\n{"title": "...", "artist": "...", "key": "...", "content": "..."}`
-        }]
-      })
-    });
+    statusText.textContent = 'Extracting song info…';
 
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => '');
-      throw new Error(`API error ${response.status}: ${errBody.slice(0,200)}`);
-    }
-    const data = await response.json();
-    const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text || '').join('').trim();
-    if (!raw) throw new Error('Empty response from model');
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    const cleaned = (jsonMatch ? jsonMatch[0] : raw).replace(/^```json\s*|^```\s*|```$/gi, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const isUG = /ultimate-guitar\.com/i.test(url);
+    let parsed = isUG ? _parseUltimateGuitar(html) : null;
+    if (!parsed) parsed = _parseGeneric(html, url);
+    if (!parsed || (!parsed.title && !parsed.content)) throw new Error('Could not find song data on that page');
 
     if (parsed.title) document.getElementById('new-song-title').value = parsed.title;
     if (parsed.artist) document.getElementById('new-song-artist').value = parsed.artist;
