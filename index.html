@@ -4328,6 +4328,7 @@ async function saveSong() {
   const content = editId
     ? (document.getElementById('edit-song-content-mirror')?.value || document.getElementById('new-song-content').value)
     : document.getElementById('new-song-content').value;
+  if (!await ensureServiceAuth()) return;
   try {
     if (editId) {
       await db.collection('songs').doc(editId).update({ title, artist, content, key });
@@ -4342,7 +4343,7 @@ async function saveSong() {
       });
     }
     closeCreateSongModal();
-  } catch(e) { console.error(e); showAlert('Error', 'Failed to save song.', 'mdi:alert-circle'); }
+  } catch(e) { console.error(e); showAlert('Error', 'Failed to save song: ' + (e.code || e.message), 'mdi:alert-circle'); }
 }
 
 // ============================================================
@@ -4590,6 +4591,7 @@ function filterManageMembers() {
 }
 
 async function removeMemberFromSetlist(uid) {
+  if (!await ensureServiceAuth()) return;
   const setlist = allSetlists.find(s => s.id === currentSetlistId);
   if (!setlist) return;
   const newWhitelist = (setlist.whitelist || []).filter(id => id !== uid);
@@ -4605,6 +4607,7 @@ async function removeMemberFromSetlist(uid) {
 }
 
 async function addMemberToSetlist(uid) {
+  if (!await ensureServiceAuth()) return;
   const setlist = allSetlists.find(s => s.id === currentSetlistId);
   if (!setlist) return;
   const newWhitelist = [...(setlist.whitelist || [])];
@@ -6516,6 +6519,7 @@ async function runTTLCleanup() {
 
 async function saveSetlistTTL() {
   if (appRole !== 'admin') return;
+  if (!await ensureServiceAuth()) return;
   const val = parseInt(document.getElementById('admin-setlist-ttl')?.value) || 7;
   globalSetlistTTLDays = val;
   showSyncToast();
@@ -6604,6 +6608,7 @@ function dasValidateInput() {
 }
 
 async function dasConfirmDelete() {
+  if (!await ensureServiceAuth()) return;
   const input = document.getElementById('das-code-input');
   const entered = input?.value?.trim();
   // Check expiry
@@ -6688,6 +6693,7 @@ function closeSetlistLimitModal() {
 
 async function deleteSetlistFromLimit(id) {
   if (!await showConfirm('Delete Setlist', 'Permanently delete this setlist? This cannot be undone.')) return;
+  if (!await ensureServiceAuth()) return;
   try {
     await db.collection('setlists').doc(id).delete();
     // Re-render the list after deletion; if now under limit, close and reopen create modal
