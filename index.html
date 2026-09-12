@@ -4074,6 +4074,32 @@ function _parseGeneric(html, url) {
   return { title, artist, key, content: content.trim() };
 }
 
+async function _fetchViaProxies(url, onAttempt) {
+  const proxies = [
+    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+    (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u)
+  ];
+  let lastErr;
+  for (let i = 0; i < proxies.length; i++) {
+    if (onAttempt) onAttempt(i + 1, proxies.length);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      const resp = await fetch(proxies[i](url), { signal: controller.signal });
+      clearTimeout(timer);
+      if (!resp.ok) { lastErr = new Error(`Fetch error ${resp.status}`); continue; }
+      const html = await resp.text();
+      if (!html || html.length < 200) { lastErr = new Error('Empty page content'); continue; }
+      return html;
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e?.name === 'AbortError' ? new Error('Fetch timed out') : e;
+    }
+  }
+  throw lastErr || new Error('All fetch attempts failed');
+}
+
 async function handleLinkImport() {
   const urlInput   = document.getElementById('link-url-input');
   const statusEl   = document.getElementById('link-status');
@@ -4096,11 +4122,9 @@ async function handleLinkImport() {
   if (idleText) idleText.style.display = 'none';
 
   try {
-    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const pageResp = await fetch(proxyUrl);
-    if (!pageResp.ok) throw new Error(`Fetch error ${pageResp.status}`);
-    const html = await pageResp.text();
-    if (!html || html.length < 200) throw new Error('Empty page content');
+    const html = await _fetchViaProxies(url, (n, total) => {
+      statusText.textContent = total > 1 ? `Fetching link… (attempt ${n}/${total})` : 'Fetching link…';
+    });
 
     statusText.textContent = 'Extracting song info…';
 
