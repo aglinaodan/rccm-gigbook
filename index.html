@@ -4027,13 +4027,7 @@ async function handleLinkImport() {
   if (idleText) idleText.style.display = 'none';
 
   try {
-    // Fetch a readable text version of the page (bypasses CORS on most sites)
-    const readerUrl = 'https://r.jina.ai/' + url;
-    const pageResp = await fetch(readerUrl);
-    if (!pageResp.ok) throw new Error(`Fetch error ${pageResp.status}`);
-    const pageText = (await pageResp.text()).slice(0, 15000);
-
-    statusText.textContent = 'Extracting song info…';
+    statusText.textContent = 'Looking up song info…';
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -4045,17 +4039,23 @@ async function handleLinkImport() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4096,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{
           role: 'user',
-          content: `Here is the extracted text of a webpage containing a song's chord sheet:\n\n---\n${pageText}\n---\n\nFrom this page, identify the Song Title, Artist, and Key (a single note like C, D#, F#, etc. — your best guess if not explicitly stated, or blank if truly undeterminable), and reproduce the full chord sheet content (chords + lyrics, with section labels like VERSE/CHORUS/BRIDGE) as plain monospace text, preserving chord-to-lyric alignment with spaces as closely as the source text allows.\n\nRespond with ONLY a raw JSON object, no markdown fences, no commentary, in exactly this shape:\n{"title": "...", "artist": "...", "key": "...", "content": "..."}`
+          content: `Use your web search tool to open this exact page: ${url}\n\nIt contains a song's chord sheet. From the page content, identify the Song Title, Artist, and Key (a single note like C, D#, F#, etc. — your best guess if not explicitly stated, or blank if truly undeterminable), and reproduce the full chord sheet content (chords + lyrics, with section labels like VERSE/CHORUS/BRIDGE) as plain monospace text, preserving chord-to-lyric alignment with spaces as closely as the source allows.\n\nAfter you have the page content, respond with ONLY a raw JSON object as your final answer, no markdown fences, no commentary, in exactly this shape:\n{"title": "...", "artist": "...", "key": "...", "content": "..."}`
         }]
       })
     });
 
-    if (!response.ok) throw new Error(`API error ${response.status}`);
+    if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
+      throw new Error(`API error ${response.status}: ${errBody.slice(0,200)}`);
+    }
     const data = await response.json();
-    const raw = (data.content || []).map(b => b.text || '').join('').trim();
-    const cleaned = raw.replace(/^```json\s*|^```\s*|```$/gi, '').trim();
+    const raw = (data.content || []).filter(b => b.type === 'text').map(b => b.text || '').join('').trim();
+    if (!raw) throw new Error('Empty response from model');
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const cleaned = (jsonMatch ? jsonMatch[0] : raw).replace(/^```json\s*|^```\s*|```$/gi, '').trim();
     const parsed = JSON.parse(cleaned);
 
     if (parsed.title) document.getElementById('new-song-title').value = parsed.title;
@@ -4073,7 +4073,7 @@ async function handleLinkImport() {
   } catch (err) {
     console.error('Link import error:', err);
     statusEl.style.display  = 'flex';
-    statusText.textContent  = 'Import failed.';
+    statusText.textContent  = 'Import failed: ' + (err?.message || 'unknown error');
     importBtn.disabled      = false;
     importBtn.style.opacity = '1';
     if (idleIcon) idleIcon.style.display = 'block';
