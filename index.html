@@ -1767,7 +1767,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
     <div style="text-align:center;padding:8px 0;">
       <iconify-icon id="alert-icon" icon="mdi:information" style="font-size:40px;color:var(--accent);display:block;margin:0 auto 12px;"></iconify-icon>
       <h3 id="alert-title" style="color:var(--lyrics-color);font-size:16px;font-weight:700;margin:0 0 8px;"></h3>
-      <p id="alert-message" style="color:var(--text-secondary);font-size:13px;margin:0 0 16px;line-height:1.5;"></p>
+      <p id="alert-message" style="color:var(--text-secondary);font-size:13px;margin:0 0 16px;line-height:1.5;white-space:pre-wrap;"></p>
       <button class="btn-primary" style="width:100%;" onclick="closeAlertModal()">OK</button>
     </div>
   </div>
@@ -4162,7 +4162,7 @@ async function handleLinkImport() {
     importBtn.style.opacity = '1';
     if (idleIcon) idleIcon.style.display = 'block';
     if (idleText) idleText.style.display = 'block';
-    showAlert('Link Import Error', 'Could not read that link. Please check the URL, or switch to Text mode and paste manually.', 'mdi:alert-circle');
+    showAlert('Link Import Error', `Could not read that link.\n\nDetails: ${err?.message || 'unknown error'}\n\nPlease check the URL, or switch to Text mode and paste manually.`, 'mdi:alert-circle');
   }
 }
 
