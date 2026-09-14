@@ -495,7 +495,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
 
 /* Circular floating buttons — each has explicit overflow+radius so the
    highlight is always perfectly circular, never square. */
-#hamburger-btn, #home-btn, #header-filter-btn,
+#hamburger-btn, #home-btn,
 #header-search-clear {
   position: relative;
   overflow: hidden;
@@ -503,7 +503,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
   -webkit-tap-highlight-color: transparent;
 }
 #hamburger-btn::after, #home-btn::after,
-#header-filter-btn::after, #header-search-clear::after {
+#header-search-clear::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -513,17 +513,14 @@ button:active::after { background: rgba(255,255,255,0.12); }
   pointer-events: none;
 }
 #hamburger-btn:hover::after, #home-btn:hover::after,
-#header-filter-btn:hover::after,
 #header-search-clear:hover::after {
   background: rgba(255,255,255,0.07);
 }
 #hamburger-btn:active::after, #home-btn:active::after,
-#header-filter-btn:active::after,
 #header-search-clear:active::after {
   background: rgba(255,255,255,0.14);
 }
 #hamburger-btn:active, #home-btn:active,
-#header-filter-btn:active,
 #header-search-clear:active {
   transform: scale(0.92);
 }
@@ -535,9 +532,16 @@ button:active::after { background: rgba(255,255,255,0.12); }
 #header-search-btn::after { display: none !important; }
 #header-search-pill {
   position: relative;
-  transition: width 0.28s cubic-bezier(0.4,0,0.2,1), background 0.15s ease;
+  transition: background 0.15s ease;
 }
 #header-search-pill:active { background: var(--surface-2); }
+/* Filter segment — flat rectangle, no radius of its own; the outer capsule's
+   overflow:hidden + border-radius clips it to match the search segment. */
+#header-filter-btn {
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.2s var(--ease-smooth);
+}
+#header-filter-btn:active { background: var(--surface-2); }
 /* FAB & add-song-fab — always circular highlight */
 .fab, #add-song-fab { position: relative; overflow: hidden; border-radius: 50%; -webkit-tap-highlight-color: transparent; }
 .fab::after, #add-song-fab::after {
@@ -789,23 +793,29 @@ button:active::after { background: rgba(255,255,255,0.12); }
   <button id="home-btn" onclick="goHome()" style="display:none;position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:14px;z-index:500;width:46px;height:46px;border-radius:50%;background:var(--surface-1);border:1px solid var(--border-color);color:var(--lyrics-color);cursor:pointer;align-items:center;justify-content:center;box-shadow:var(--shadow-float);transition:background 0.15s var(--ease-smooth);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
     <iconify-icon icon="mdi:arrow-left" style="font-size:22px;"></iconify-icon>
   </button>
-  <!-- Compact song title — fades in beside the back button once the sheet is scrolled -->
-  <div id="sheet-collapsed-title" style="display:none;position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:68px;right:14px;height:46px;z-index:499;align-items:center;opacity:0;pointer-events:none;transition:opacity 0.18s var(--ease-smooth);">
-    <span style="color:var(--lyrics-color);font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+  <!-- Song header strip — title+artist beside the back button, always visible while a song is open.
+       Background fades in on scroll so lyrics don't show through underneath it. -->
+  <div id="song-sheet-topbar" style="display:none;position:fixed;top:0;left:0;right:0;height:calc(58px + env(safe-area-inset-top,0px));z-index:497;pointer-events:none;transition:background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;border-bottom:1px solid transparent;">
+    <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 4px) 14px 4px 68px;min-width:0;">
+      <div id="sheet-collapsed-title-text" style="color:var(--lyrics-color);font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+      <div id="sheet-collapsed-artist-text" style="color:var(--text-secondary);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
+    </div>
   </div>
 
-  <!-- FLOATING SEARCH + FILTER (top-right, per-tab) -->
-  <div id="header-actions" style="position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:var(--view-px);right:var(--view-px);z-index:400;display:flex;align-items:center;gap:8px;transition:opacity 0.22s var(--ease-smooth), transform 0.22s var(--ease-smooth);">
-    <!-- Always-open search pill -->
-    <div id="header-search-pill" style="display:flex;align-items:center;background:var(--surface-1);border:1px solid var(--border-color);border-radius:23px;box-shadow:var(--shadow-float);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;height:46px;flex:1;min-width:0;">
-      <button id="header-search-btn" onclick="document.getElementById('header-search-input').focus()" style="width:42px;min-width:42px;height:46px;background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+  <!-- FLOATING SEARCH + FILTER (top-right, per-tab) — one seamless capsule -->
+  <div id="header-actions" style="position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:var(--view-px);right:var(--view-px);z-index:400;display:flex;align-items:stretch;height:46px;background:var(--surface-1);border:1px solid var(--border-color);border-radius:23px;box-shadow:var(--shadow-float);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);overflow:hidden;transition:opacity 0.22s var(--ease-smooth), transform 0.22s var(--ease-smooth);">
+    <!-- Search segment -->
+    <div id="header-search-pill" style="display:flex;align-items:center;flex:1;min-width:0;">
+      <button id="header-search-btn" onclick="document.getElementById('header-search-input').focus()" style="width:42px;min-width:42px;height:100%;background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
         <iconify-icon icon="mdi:magnify" style="font-size:20px;"></iconify-icon>
       </button>
       <input id="header-search-input" type="text" placeholder="Search..." oninput="onHeaderSearchInput()"
-        style="flex:1;min-width:0;border:none;background:transparent;color:var(--lyrics-color);font-size:14px;font-family:var(--app-font-family);outline:none;padding:0 6px 0 0;" />
+        style="flex:1;min-width:0;height:100%;border:none;background:transparent;color:var(--lyrics-color);font-size:14px;font-family:var(--app-font-family);outline:none;padding:0 6px 0 0;" />
     </div>
-    <!-- Filter button -->
-    <button id="header-filter-btn" onclick="openHeaderFilter()" style="width:46px;min-width:46px;height:46px;border-radius:23px;background:var(--surface-1);border:1px solid var(--border-color);color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-float);position:relative;transition:color 0.2s var(--ease-smooth), background 0.2s var(--ease-smooth);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
+    <!-- Divider -->
+    <div style="width:1px;align-self:stretch;margin:8px 0;background:var(--border-color);flex-shrink:0;"></div>
+    <!-- Filter segment -->
+    <button id="header-filter-btn" onclick="openHeaderFilter()" style="width:46px;min-width:46px;height:100%;background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:color 0.2s var(--ease-smooth), background 0.2s var(--ease-smooth);flex-shrink:0;">
       <iconify-icon icon="mdi:tune-variant" style="font-size:20px;"></iconify-icon>
     </button>
   </div>
@@ -842,8 +852,8 @@ button:active::after { background: rgba(255,255,255,0.12); }
       <!-- SONG SHEET VIEW -->
       <div id="song-sheet-view" style="display:none;">
         <div id="song-sheet-subheader" style="padding:8px var(--view-px);border-bottom:1px solid var(--border-color);margin-bottom:8px;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-            <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:flex-start;justify-content:flex-end;gap:8px;">
+            <div style="flex:1;min-width:0;display:none;">
               <h2 id="sheet-song-title" style="color:var(--lyrics-color);font-size:16px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h2>
               <p id="sheet-song-artist" style="color:var(--text-secondary);font-size:13px;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></p>
             </div>
@@ -2022,18 +2032,23 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('online', _resubscribeIfStale);
 window.addEventListener('pageshow', (e) => { if (e.persisted) _resubscribeIfStale(); });
 
-// ── Collapsing song title on scroll ──────────────────────
-// While viewing a song sheet, once the user scrolls past the header, fade in
-// a compact title beside the back button (mirrors the large title below).
+// ── Song header blur-on-scroll ──────────────────────
+// Title+artist beside the back button are always visible while a song is open;
+// once the user scrolls, fade in a blurred background behind that strip so the
+// lyrics scrolling underneath don't show through it.
 (function initSheetTitleCollapse() {
   const mainContent = document.getElementById('main-content');
-  const collapsedTitle = document.getElementById('sheet-collapsed-title');
-  if (!mainContent || !collapsedTitle) return;
-  const THRESHOLD = 48;
+  const topbar = document.getElementById('song-sheet-topbar');
+  if (!mainContent || !topbar) return;
+  const THRESHOLD = 24;
   mainContent.addEventListener('scroll', () => {
     const sheetView = document.getElementById('song-sheet-view');
     if (!sheetView || sheetView.style.display !== 'block') return;
-    collapsedTitle.style.opacity = mainContent.scrollTop > THRESHOLD ? '1' : '0';
+    const scrolled = mainContent.scrollTop > THRESHOLD;
+    topbar.style.background = scrolled ? 'var(--nav-bg)' : 'transparent';
+    topbar.style.backdropFilter = scrolled ? 'blur(12px)' : 'none';
+    topbar.style.webkitBackdropFilter = scrolled ? 'blur(12px)' : 'none';
+    topbar.style.borderBottomColor = scrolled ? 'var(--border-color)' : 'transparent';
   }, { passive: true });
 })();
 
@@ -2314,12 +2329,10 @@ function syncHeaderFilterDot() {
   else if (activeTab === 'users') tabBtn = document.getElementById('user-filter-btn');
   const isActive = tabBtn && tabBtn.classList.contains('has-active-filter');
   if (isActive) {
-    headerBtn.style.borderColor = 'var(--accent)';
     headerBtn.style.background  = 'var(--accent-glow)';
     headerBtn.style.color       = 'var(--accent-soft)';
-    headerBtn.style.boxShadow   = '0 0 0 1.5px var(--accent) inset, 0 2px 10px rgba(60,30,30,0.18)';
+    headerBtn.style.boxShadow   = 'inset 0 0 0 1.5px var(--accent)';
   } else {
-    headerBtn.style.borderColor = '';
     headerBtn.style.background  = '';
     headerBtn.style.color       = '';
     headerBtn.style.boxShadow   = '';
@@ -2484,6 +2497,10 @@ function setupListeners() {
       if (updated) {
         document.getElementById('sheet-song-title').textContent = updated.title || '';
         document.getElementById('sheet-song-artist').textContent = updated.artist || '';
+        const _tt = document.getElementById('sheet-collapsed-title-text');
+        const _ta = document.getElementById('sheet-collapsed-artist-text');
+        if (_tt) _tt.textContent = updated.title || '';
+        if (_ta) _ta.textContent = updated.artist || '';
         renderSheetContent(updated.content || '', localKey, originalKey);
       }
     }
@@ -2955,11 +2972,15 @@ function openSongSheet(songId, fromSetlist) {
   sheetView.style.opacity = '1';
   document.getElementById('sheet-song-title').textContent = song.title || '';
   document.getElementById('sheet-song-artist').textContent = song.artist || '';
-  const collapsedTitle = document.getElementById('sheet-collapsed-title');
-  if (collapsedTitle) {
-    collapsedTitle.querySelector('span').textContent = song.title || '';
-    collapsedTitle.style.display = 'flex';
-    collapsedTitle.style.opacity = '0';
+  const topbar = document.getElementById('song-sheet-topbar');
+  if (topbar) {
+    document.getElementById('sheet-collapsed-title-text').textContent = song.title || '';
+    document.getElementById('sheet-collapsed-artist-text').textContent = song.artist || '';
+    topbar.style.display = 'block';
+    topbar.style.background = 'transparent';
+    topbar.style.backdropFilter = 'none';
+    topbar.style.webkitBackdropFilter = 'none';
+    topbar.style.borderBottomColor = 'transparent';
   }
   const navTitle = document.getElementById('top-nav-title');
   if (navTitle) { navTitle.textContent = song.title || ''; navTitle.style.display = 'block'; }
@@ -3085,8 +3106,8 @@ function closeSongSheet() {
   _bpmActive = false;
   updateAutoscrollFabIcon();
   document.getElementById('song-sheet-view').style.display = 'none';
-  const collapsedTitleClose = document.getElementById('sheet-collapsed-title');
-  if (collapsedTitleClose) { collapsedTitleClose.style.display = 'none'; collapsedTitleClose.style.opacity = '0'; }
+  const topbarClose = document.getElementById('song-sheet-topbar');
+  if (topbarClose) { topbarClose.style.display = 'none'; topbarClose.style.background = 'transparent'; topbarClose.style.backdropFilter = 'none'; topbarClose.style.webkitBackdropFilter = 'none'; topbarClose.style.borderBottomColor = 'transparent'; }
   document.getElementById('autoscroll-fab').style.display = 'none';
   const reshowClose = document.getElementById('autoscroll-reshow-btn');
   if (reshowClose) reshowClose.style.display = 'none';
