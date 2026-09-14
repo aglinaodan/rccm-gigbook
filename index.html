@@ -216,7 +216,7 @@
     #autoscroll-fab {
       position: fixed !important;
       bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
-      right: 20px !important;
+      right: var(--view-px) !important;
       left: auto !important;
       z-index: 510 !important;
     }
@@ -790,13 +790,13 @@ button:active::after { background: rgba(255,255,255,0.12); }
   <div id="sync-bar"><div id="sync-bar-fill"></div></div>
 
   <!-- Back button (shown when drilling into song/setlist/user) -->
-  <button id="home-btn" onclick="goHome()" style="display:none;position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:14px;z-index:500;width:46px;height:46px;border-radius:50%;background:var(--surface-1);border:1px solid var(--border-color);color:var(--lyrics-color);cursor:pointer;align-items:center;justify-content:center;box-shadow:var(--shadow-float);transition:background 0.15s var(--ease-smooth);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
+  <button id="home-btn" onclick="goHome()" style="display:none;position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:var(--view-px);z-index:500;width:46px;height:46px;border-radius:50%;background:var(--surface-1);border:1px solid var(--border-color);color:var(--lyrics-color);cursor:pointer;align-items:center;justify-content:center;box-shadow:var(--shadow-float);transition:background 0.15s var(--ease-smooth);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);">
     <iconify-icon icon="mdi:arrow-left" style="font-size:22px;"></iconify-icon>
   </button>
   <!-- Song header strip — title+artist beside the back button, always visible while a song is open.
        Background fades in on scroll so lyrics don't show through underneath it. -->
   <div id="song-sheet-topbar" style="display:none;position:fixed;top:0;left:0;right:0;height:calc(58px + env(safe-area-inset-top,0px));z-index:497;pointer-events:none;transition:background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;border-bottom:1px solid transparent;">
-    <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 4px) 14px 4px 68px;min-width:0;">
+    <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 4px) var(--view-px) 4px calc(var(--view-px) + 46px + 8px);min-width:0;">
       <div id="sheet-collapsed-title-text" style="color:var(--lyrics-color);font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       <div id="sheet-collapsed-artist-text" style="color:var(--text-secondary);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
     </div>
@@ -1436,7 +1436,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
   </div>
 </div>
 <!-- Tiny re-show pill, appears bottom-right when the auto-scroll button has been hidden -->
-<button id="autoscroll-reshow-btn" onclick="showAutoscrollFab()" title="Show auto-scroll button" style="display:none;position:fixed;bottom:calc(72px + env(safe-area-inset-bottom, 0px));right:20px;z-index:510;width:36px;height:36px;border-radius:50%;background:var(--surface-1);border:1px solid var(--border-subtle);color:var(--text-muted);align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow-float);opacity:0.7;">
+<button id="autoscroll-reshow-btn" onclick="showAutoscrollFab()" title="Show auto-scroll button" style="display:none;position:fixed;bottom:calc(72px + env(safe-area-inset-bottom, 0px));right:var(--view-px);z-index:510;width:36px;height:36px;border-radius:50%;background:var(--surface-1);border:1px solid var(--border-subtle);color:var(--text-muted);align-items:center;justify-content:center;cursor:pointer;box-shadow:var(--shadow-float);opacity:0.7;">
   <iconify-icon icon="mdi:play-circle-outline" style="font-size:18px;"></iconify-icon>
 </button>
 <!-- CREATE SONG MODAL -->
@@ -2463,7 +2463,7 @@ function updateHomeBtn(show) {
   // doesn't overlap it; otherwise align flush with the list's left inset below.
   const actions = document.getElementById('header-actions');
   if (actions) {
-    actions.style.left = shouldShow ? 'calc(14px + 46px + 8px)' : 'var(--view-px)';
+    actions.style.left = shouldShow ? 'calc(var(--view-px) + 46px + 8px)' : 'var(--view-px)';
   }
 
   // Hide search/filter when drilling into detail or on admin tab
