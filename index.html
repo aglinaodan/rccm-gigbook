@@ -673,8 +673,8 @@ button:active::after { background: rgba(255,255,255,0.12); }
     .pin-key-cancel { color:var(--text-muted);font-size:12px;font-weight:600; }
     .pin-key-del { color:var(--text-muted); }
     /* ── Bottom Nav ──────────────────────────── */
-    .bnav-btn { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:none;cursor:pointer;padding:8px 4px;color:var(--text-muted);transition:color 0.15s; }
-    .bnav-btn.active { color:var(--accent-soft); }
+    .bnav-btn { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:none;cursor:pointer;padding:8px 4px;color:var(--text-muted);transition:color 0.15s, background 0.2s var(--ease-smooth); }
+    .bnav-btn.active { color:var(--accent-soft); background:var(--surface-2); margin:6px 4px; border-radius:14px; }
     .bnav-icon { font-size:22px; }
     .bnav-label { font-size:10px;font-weight:600;letter-spacing:0.03em; }
 
@@ -1426,7 +1426,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
 </button>
 <!-- CREATE SONG MODAL -->
 <div id="create-song-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-sheet" style="min-height:420px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;">
+  <div class="modal-sheet" style="min-height:420px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;padding-left:var(--view-px);padding-right:var(--view-px);">
     <div class="modal-handle" style="flex-shrink:0;"></div>
 
     <!-- Fixed header -->
@@ -1487,20 +1487,20 @@ button:active::after { background: rgba(255,255,255,0.12); }
       </div>
 
       <!-- Add mode: link intake -->
-      <div id="intake-link-area" style="display:none;flex:1;overflow-y:auto;min-height:80px;">
-        <div style="background:var(--surface-1);border-radius:10px;padding:20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;">
+      <div id="intake-link-area" style="display:none;flex:1;flex-direction:column;overflow-y:auto;min-height:80px;">
+        <div style="background:var(--surface-1);border-radius:10px;padding:20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:14px;">
           <iconify-icon id="link-idle-icon" icon="mdi:link-variant" style="font-size:40px;color:var(--accent);"></iconify-icon>
           <p id="link-idle-text" style="color:var(--text-secondary);font-size:13px;margin:0;line-height:1.5;">Paste a link to a chord sheet page. We'll pull the title, artist, key, and chords automatically.</p>
-          <input type="url" class="input-field" id="link-url-input" placeholder="https://tabs.ultimate-guitar.com/..." style="width:100%;min-height:44px;padding:11px 12px;box-sizing:border-box;" oninput="_updateLinkImportBtn()" />
-          <div id="link-status" style="display:none;align-items:center;gap:8px;color:var(--text-secondary);font-size:13px;">
-            <div class="spinner" style="width:18px;height:18px;border-width:2px;flex-shrink:0;"></div>
-            <span id="link-status-text">Fetching link…</span>
-          </div>
-          <button id="link-import-btn" class="btn-primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="handleLinkImport()" disabled>
-            <iconify-icon icon="mdi:link-variant" style="font-size:18px;"></iconify-icon>
-            Import from Link
-          </button>
         </div>
+        <input type="url" class="input-field" id="link-url-input" placeholder="https://tabs.ultimate-guitar.com/..." style="width:100%;min-height:44px;padding:11px 12px;box-sizing:border-box;" oninput="_updateLinkImportBtn()" />
+        <div id="link-status" style="display:none;align-items:center;gap:8px;color:var(--text-secondary);font-size:13px;margin-top:10px;">
+          <div class="spinner" style="width:18px;height:18px;border-width:2px;flex-shrink:0;"></div>
+          <span id="link-status-text">Fetching link…</span>
+        </div>
+        <button id="link-import-btn" class="btn-primary" style="width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;" onclick="handleLinkImport()" disabled>
+          <iconify-icon icon="mdi:link-variant" style="font-size:18px;"></iconify-icon>
+          Import from Link
+        </button>
       </div>
 
       <!-- Edit mode: single textarea, no intake switcher -->
