@@ -279,7 +279,7 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
     /* Main content scrollbar — clipped so it never appears under top/bottom nav */
-    #main-content { scrollbar-gutter: stable; scrollbar-width: thin; }
+    #main-content { scrollbar-width: thin; }
     #main-content::-webkit-scrollbar { width: 3px; }
     #main-content::-webkit-scrollbar-track {
       background: transparent;
@@ -413,10 +413,6 @@
     .onboarding-btn:hover, .onboarding-btn.selected { border-color: var(--accent); background: var(--accent-glow); color: var(--accent-soft); }
     .no-select { user-select: none; -webkit-user-select: none; }
     .setlist-song-item { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .privacy-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: var(--radius-pill); font-size: 10px; font-weight: 600; }
-    .badge-public { background: #064e3b; color: #34d399; }
-    .badge-private { background: #431407; color: #fb923c; }
-    .badge-custom { background: #2e1065; color: #e88080; }
     textarea.input-field { resize: vertical; min-height: 120px; }
     :root {
       --btn-primary-bg: linear-gradient(135deg, var(--accent-strong), var(--accent));
@@ -1552,44 +1548,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
       <input type="text" class="input-field" id="new-setlist-name" placeholder="e.g., Sunday Morning Service" />
     </div>
 
-    <!-- Private + Custom-Group toggles, side by side -->
-    <div style="display:flex;align-items:stretch;gap:10px;margin-bottom:14px;flex-wrap:nowrap;">
-      <div id="private-setlist-section" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:12px;padding:10px;">
-        <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-          <iconify-icon icon="mdi:lock" style="font-size:15px;color:var(--text-muted);flex-shrink:0;"></iconify-icon>
-          <span style="color:var(--lyrics-color);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Private</span>
-        </div>
-        <label class="toggle-switch" id="new-setlist-private-label" style="flex-shrink:0;display:block;align-self:flex-start;">
-          <input type="checkbox" id="new-setlist-private"><span class="toggle-slider"></span>
-        </label>
-      </div>
-
-      <div id="custom-group-section" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:12px;padding:10px;">
-        <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-          <iconify-icon icon="mdi:lightning-bolt" style="font-size:15px;color:var(--text-muted);flex-shrink:0;"></iconify-icon>
-          <span style="color:var(--lyrics-color);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Custom-Group</span>
-        </div>
-        <label class="toggle-switch" style="flex-shrink:0;display:block;align-self:flex-start;">
-          <input type="checkbox" id="new-setlist-custom" onchange="toggleCustomGroupUI(this.checked)"><span class="toggle-slider"></span>
-        </label>
-      </div>
-    </div>
-
-    <!-- Expanding zone: only visible when custom-group is ON -->
-    <div id="custom-group-users-section" style="display:none;flex:1;flex-direction:column;min-height:0;margin-top:10px;">
-      <label style="color:var(--text-secondary);font-size:12px;display:block;margin-bottom:6px;flex-shrink:0;">Select Members</label>
-      <!-- Search -->
-      <div style="position:relative;margin-bottom:8px;flex-shrink:0;">
-        <iconify-icon icon="mdi:magnify" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-muted);"></iconify-icon>
-        <input type="text" class="input-field" style="padding-left:32px;font-size:13px;" id="custom-group-search" placeholder="Search users..." oninput="filterCustomGroupUsers()" />
-      </div>
-      <!-- Members list — grows/shrinks with modal height -->
-      <div id="custom-group-users-list" style="flex:1;min-height:80px;overflow-y:auto;background:var(--canvas-bg);border-radius:8px;"></div>
-      <!-- Selected chips -->
-      <div id="selected-custom-members" style="flex-shrink:0;display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-    </div>
-
-    <!-- Spacer that collapses when custom-group is open -->
+    <!-- Spacer -->
     <div id="setlist-spacer" style="flex:1;min-height:0;"></div>
 
     <!-- Fixed footer -->
@@ -1597,7 +1556,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
       <button class="btn-primary" onclick="saveSetlist()" style="width:100%;">Create Setlist</button>
       <p style="color:var(--text-muted);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.5;">
         <iconify-icon icon="mdi:information-outline" style="font-size:12px;vertical-align:middle;margin-right:3px;"></iconify-icon>
-        If Private and Custom-Group are not selected, this setlist will be visible to all users.
+        This setlist will be visible to all users.
       </p>
     </div>
 
@@ -1897,14 +1856,12 @@ const SHEET_FONT_BASE = 15; // 1.0x / 100%
 const SHEET_ZOOM_MIN = 0.6; // 0.6x
 const SHEET_ZOOM_MAX = 3.0; // 3x
 let globalSongLimit = 4;
-let selectedCustomMembers = [];
 let currentEditUserId = null;
 let userFilterActive = 'all';
 let currentSongSort = 'az';
 let songSearchQuery = '';
 let setlistSearchQuery = '';
 let currentSetlistSort = 'newest';
-let currentSetlistFilter = 'all';
 let deferredInstallPrompt = null;
 let swipeStartX = 0;
 let swipeStartY = 0;
@@ -1960,7 +1917,6 @@ function _isVisible(id) {
 }
 function handleBackButton() {
   try {
-    if (_isVisible('manage-members-modal')) { closeManageMembersModal(); return; }
     if (_isVisible('logo-change-modal')) { closeLogoChangeModal(); return; }
     if (_isVisible('create-song-modal')) { closeCreateSongModal(); return; }
     if (_isVisible('create-setlist-modal')) { closeCreateSetlistModal(); return; }
@@ -2636,14 +2592,14 @@ function toggleSongFilterMenu() {
 function setSongSort(mode) {
   currentSongSort = mode;
   const label = document.getElementById('song-filter-label');
-  const labelMap = { az: 'A–Z', za: 'Z–A', artist: 'By Artist', favourites: '♥ Favs' };
+  const labelMap = { newest: 'Newest', oldest: 'Oldest', az: 'A–Z', za: 'Z–A', artist: 'By Artist', favourites: '♥ Favs' };
   if (label) label.textContent = labelMap[mode] || mode;
   // Mark filter button active if not default
   const btn = document.getElementById('song-filter-btn');
   if (btn) btn.classList.toggle('has-active-filter', mode !== 'az');
   syncHeaderFilterDot();
   // Mark active menu item
-  ['az','za','artist','favourites'].forEach(m => {
+  ['newest','oldest','az','za','artist','favourites'].forEach(m => {
     const el = document.getElementById('song-sort-' + m);
     if (el) el.classList.toggle('filter-menu-item-active', m === mode);
   });
@@ -2661,16 +2617,12 @@ function _updateSetlistFilterBtn() {
   const btn = document.getElementById('setlist-filter-btn');
   if (!btn) return;
   const sortIsDefault = currentSetlistSort === 'newest';
-  const filterIsDefault = currentSetlistFilter === 'all';
-  btn.classList.toggle('has-active-filter', !sortIsDefault || !filterIsDefault);
+  btn.classList.toggle('has-active-filter', !sortIsDefault);
   syncHeaderFilterDot();
-  // Update label to show most relevant active state
   const label = document.getElementById('setlist-filter-label');
   if (!label) return;
   const sortMap = { newest: 'Newest', oldest: 'Oldest', az: 'A–Z', za: 'Z–A' };
-  const filterMap = { all: '', public: 'Public', private: 'Private', custom: 'Custom' };
-  if (!filterIsDefault) label.textContent = filterMap[currentSetlistFilter];
-  else label.textContent = sortMap[currentSetlistSort] || 'Newest';
+  label.textContent = sortMap[currentSetlistSort] || 'Newest';
 }
 
 function _updateSetlistMenuMarkers() {
@@ -2678,14 +2630,10 @@ function _updateSetlistMenuMarkers() {
   document.querySelectorAll('#setlist-filter-menu .sort-chk').forEach(el => {
     el.style.opacity = el.dataset.for === currentSetlistSort ? '1' : '0';
   });
-  // Filter checkmarks
-  document.querySelectorAll('#setlist-filter-menu .filter-chk').forEach(el => {
-    el.style.opacity = el.dataset.for === currentSetlistFilter ? '1' : '0';
-  });
 }
 
 function _updateSongMenuMarkers() {
-  ['az','za','artist','favourites'].forEach(m => {
+  ['newest','oldest','az','za','artist','favourites'].forEach(m => {
     const chk = document.getElementById('song-sort-' + m + '-chk');
     if (chk) chk.style.opacity = m === currentSongSort ? '1' : '0';
   });
@@ -2693,13 +2641,6 @@ function _updateSongMenuMarkers() {
 
 function setSetlistSort(mode) {
   currentSetlistSort = mode;
-  _updateSetlistFilterBtn();
-  toggleSetlistFilterMenu();
-  renderSetlistsList();
-}
-
-function setSetlistFilter(filter) {
-  currentSetlistFilter = filter;
   _updateSetlistFilterBtn();
   toggleSetlistFilterMenu();
   renderSetlistsList();
@@ -2758,6 +2699,8 @@ function renderSongsList() {
   if (currentSongSort === 'az' || currentSongSort === 'favourites') songs.sort((a,b) => (a.title||'').localeCompare(b.title||''));
   else if (currentSongSort === 'za') songs.sort((a,b) => (b.title||'').localeCompare(a.title||''));
   else if (currentSongSort === 'artist') songs.sort((a,b) => (a.artist||'').localeCompare(b.artist||''));
+  else if (currentSongSort === 'newest') songs.sort((a,b) => (b.createdAt?.toDate?.() || new Date(0)) - (a.createdAt?.toDate?.() || new Date(0)));
+  else if (currentSongSort === 'oldest') songs.sort((a,b) => (a.createdAt?.toDate?.() || new Date(0)) - (b.createdAt?.toDate?.() || new Date(0)));
   const listEl = document.getElementById('songs-list');
   const emptyEl = document.getElementById('songs-empty');
   if (songs.length === 0) {
@@ -3822,9 +3765,11 @@ function renderSetlistDotIndicator() {
 }
 function getSortedSongs() {
   let songs = [...allSongs];
-  if (currentSongSort === 'az') songs.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  if (currentSongSort === 'az' || currentSongSort === 'favourites') songs.sort((a,b)=>(a.title||'').localeCompare(b.title||''));
   else if (currentSongSort === 'za') songs.sort((a,b)=>(b.title||'').localeCompare(a.title||''));
-  else songs.sort((a,b)=>(a.artist||'').localeCompare(b.artist||''));
+  else if (currentSongSort === 'artist') songs.sort((a,b)=>(a.artist||'').localeCompare(b.artist||''));
+  else if (currentSongSort === 'newest') songs.sort((a,b) => (b.createdAt?.toDate?.() || new Date(0)) - (a.createdAt?.toDate?.() || new Date(0)));
+  else if (currentSongSort === 'oldest') songs.sort((a,b) => (a.createdAt?.toDate?.() || new Date(0)) - (b.createdAt?.toDate?.() || new Date(0)));
   return songs;
 }
 
@@ -4590,125 +4535,6 @@ async function loadSetlistCreator(uid) {
   if (el) el.innerHTML = '';
 }
 
-// ============================================================
-// MANAGE MEMBERS MODAL (Custom Group Setlists)
-// ============================================================
-function openManageMembersModal() {
-  const setlist = allSetlists.find(s => s.id === currentSetlistId);
-  if (true) return; // custom groups removed
-  document.getElementById('manage-members-search').value = '';
-  renderManageCurrentMembers();
-  renderManageAddList('');
-  document.getElementById('manage-members-modal').style.display = 'flex';
-  _animateModalIn(document.getElementById('manage-members-modal'));
-  pushState();
-}
-
-function closeManageMembersModal() {
-  _animateModalOut(document.getElementById('manage-members-modal'));
-}
-
-function renderManageCurrentMembers() {
-  const setlist = allSetlists.find(s => s.id === currentSetlistId);
-  const whitelist = setlist?.whitelist || [];
-  const container = document.getElementById('manage-current-members');
-  if (whitelist.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:10px 0;">No members yet.</p>';
-    return;
-  }
-  container.innerHTML = whitelist.map(uid => {
-    const u = allUsers.find(x => x.uid === uid);
-    const name = u ? escHtml(u.displayName || u.email || uid) : uid;
-    const photo = u?.photoURL || '';
-    return `<div style="display:flex;align-items:center;gap:10px;background:var(--surface-1);border:1px solid var(--border-color);border-radius:12px;padding:12px 14px;">
-      <img src="${escHtml(photo)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;background:var(--surface-2);flex-shrink:0;" onerror="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--surface-2')" />
-      <span style="color:var(--lyrics-color);font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</span>
-      <button onclick="removeMemberFromSetlist('${uid}')"
-        style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0;"
-        title="Remove">
-        <iconify-icon icon="mdi:close" style="font-size:18px;"></iconify-icon>
-      </button>
-    </div>`;
-  }).join('');
-}
-
-function renderManageAddList(query) {
-  const setlist = allSetlists.find(s => s.id === currentSetlistId);
-  const whitelist = setlist?.whitelist || [];
-  const creatorUid = setlist?.createdBy;
-  // Exclude creator and already-added members
-  const available = allUsers.filter(u =>
-    u.uid !== 'service' &&
-    u.uid !== creatorUid &&
-    !whitelist.includes(u.uid) &&
-    (
-      (u.displayName||'').toLowerCase().includes(query.toLowerCase()) ||
-      (u.email||'').toLowerCase().includes(query.toLowerCase())
-    )
-  );
-  const container = document.getElementById('manage-add-members-list');
-  if (available.length === 0) {
-    container.innerHTML = '<p style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px;">No more users to add.</p>';
-    return;
-  }
-  container.innerHTML = available.map(u => {
-    const instruments = u.instruments || [];
-    const infoTags = [];
-    instruments.forEach(inst => infoTags.push(`<span style="background:var(--surface-2);border:1px solid var(--border-color);border-radius:999px;padding:1px 6px;font-size:10px;color:var(--text-secondary);">${escHtml(inst)}</span>`));
-    if (u.role === 'Singer' || u.canSing) infoTags.push(`<span style="background:#831843;color:#f9a8d4;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:600;">Singer</span>`);
-    if (u.role === 'Tech' || u.isAlsoTech) infoTags.push(`<span style="background:#164e63;color:#67e8f9;border-radius:999px;padding:1px 6px;font-size:10px;font-weight:600;">Tech</span>`);
-    return `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border-color);cursor:pointer;transition:background 0.15s;"
-      onclick="addMemberToSetlist('${u.uid}')"
-      onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-      <img src="${escHtml(u.photoURL||'')}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;background:var(--surface-2);flex-shrink:0;" onerror="this.style.background=getComputedStyle(document.documentElement).getPropertyValue('--surface-2')" />
-      <div style="flex:1;min-width:0;">
-        <p style="color:var(--lyrics-color);font-size:13px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(u.displayName||'')}</p>
-        ${infoTags.length ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;">${infoTags.join('')}</div>` : ''}
-      </div>
-      <iconify-icon icon="mdi:plus-circle" style="font-size:20px;color:var(--accent);flex-shrink:0;"></iconify-icon>
-    </div>`}).join('');
-}
-
-function filterManageMembers() {
-  const q = document.getElementById('manage-members-search').value;
-  renderManageAddList(q);
-}
-
-async function removeMemberFromSetlist(uid) {
-  if (!await ensureServiceAuth()) return;
-  const setlist = allSetlists.find(s => s.id === currentSetlistId);
-  if (!setlist) return;
-  const newWhitelist = (setlist.whitelist || []).filter(id => id !== uid);
-  try {
-    await db.collection('setlists').doc(currentSetlistId).update({ whitelist: newWhitelist });
-    setlist.whitelist = newWhitelist;
-    renderManageCurrentMembers();
-    renderManageAddList(document.getElementById('manage-members-search').value);
-    // Refresh the setlist detail (member avatars)
-    renderSetlistDetail(setlist);
-    loadSetlistCreator(setlist.createdBy);
-  } catch(e) { console.error(e); showAlert('Error', 'Failed to remove member.', 'mdi:alert-circle'); }
-}
-
-async function addMemberToSetlist(uid) {
-  if (!await ensureServiceAuth()) return;
-  const setlist = allSetlists.find(s => s.id === currentSetlistId);
-  if (!setlist) return;
-  const newWhitelist = [...(setlist.whitelist || [])];
-  if (newWhitelist.includes(uid)) return;
-  newWhitelist.push(uid);
-  try {
-    await db.collection('setlists').doc(currentSetlistId).update({ whitelist: newWhitelist });
-    setlist.whitelist = newWhitelist;
-    renderManageCurrentMembers();
-    renderManageAddList(document.getElementById('manage-members-search').value);
-    // Refresh avatars in setlist detail
-    renderSetlistDetail(setlist);
-    loadSetlistCreator(setlist.createdBy);
-  } catch(e) { console.error(e); showAlert('Error', 'Failed to add member.', 'mdi:alert-circle'); }
-}
-
 function copySetlistSong(songId) {
   const song = allSongs.find(s => s.id === songId);
   if (!song) return;
@@ -4792,8 +4618,6 @@ function renderSongSelectorList(query) {
     `).join('');
 }
 
-function isCustomGroupSetlist(id) { return false; }
-
 async function addSongToSetlist(songId) {
   const limit = getSetlistSongLimit();
   if (currentSetlistSongs.length >= limit) {
@@ -4821,13 +4645,6 @@ function openCreateSetlistModal() {
     return;
   }
   document.getElementById('new-setlist-name').value = '';
-  // Hide private/custom-group options — all setlists are public
-  const privateSection = document.getElementById('private-setlist-section');
-  if (privateSection) privateSection.style.display = 'none';
-  const cgSection = document.getElementById('custom-group-section');
-  if (cgSection) cgSection.style.display = 'none';
-  const spacer = document.getElementById('setlist-spacer');
-  if (spacer) spacer.style.display = 'none';
   const _cslm = document.getElementById('create-setlist-modal');
   _cslm.style.display = 'flex';
   _animateModalIn(_cslm);
@@ -4835,75 +4652,6 @@ function openCreateSetlistModal() {
   pushState();
 }
 function closeCreateSetlistModal() { _animateModalOut(document.getElementById('create-setlist-modal')); }
-
-function toggleCustomGroupUI(checked) {
-  const section = document.getElementById('custom-group-users-section');
-  const spacer  = document.getElementById('setlist-spacer');
-  section.style.display = checked ? 'flex' : 'none';
-  if (spacer) spacer.style.display = checked ? 'none' : 'block';
-  if (checked) renderCustomGroupUsers('');
-
-  // A custom-group setlist can't also be private — disable that toggle while
-  // custom-group is on, and visually grey it out so it's clearly not clickable.
-  const privateCheckbox = document.getElementById('new-setlist-private');
-  const privateLabel = document.getElementById('new-setlist-private-label');
-  if (privateCheckbox) {
-    privateCheckbox.disabled = checked;
-    if (checked) privateCheckbox.checked = false;
-  }
-  if (privateLabel) {
-    privateLabel.style.opacity = checked ? '0.45' : '1';
-    privateLabel.style.cursor = checked ? 'not-allowed' : 'pointer';
-    privateLabel.style.pointerEvents = checked ? 'none' : 'auto';
-  }
-}
-
-function renderCustomGroupUsers(query) {
-  const container = document.getElementById('custom-group-users-list');
-  const filtered = allUsers.filter(u =>
-    u.uid !== 'service' &&
-    true &&
-    (u.displayName||'').toLowerCase().includes(query.toLowerCase())
-  );
-  container.innerHTML = filtered.map(u => {
-    const selected = selectedCustomMembers.includes(u.uid);
-    // Build info tags: instruments, singer, tech
-    const instruments = u.instruments || [];
-    const infoTags = [];
-    instruments.forEach(inst => infoTags.push(`<span style="background:var(--surface-2);border:1px solid var(--border-color);border-radius:999px;padding:1px 7px;font-size:10px;color:var(--text-secondary);">${escHtml(inst)}</span>`));
-    if (u.role === 'Singer' || u.canSing) infoTags.push(`<span style="background:#831843;color:#f9a8d4;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:600;">Singer</span>`);
-    if (u.role === 'Tech' || u.isAlsoTech) infoTags.push(`<span style="background:#164e63;color:#67e8f9;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:600;">Tech</span>`);
-    if (['Sub-Admin','Lead'].includes(u.role)) infoTags.push(`<span class="role-badge ${getRoleBadgeClass(u.role)}" style="font-size:10px;">${escHtml(u.role)}</span>`);
-    return `
-    <div onclick="toggleCustomMember('${u.uid}')" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border-subtle);background:${selected?'var(--surface-2)':'transparent'};">
-      <img src="${escHtml(u.photoURL||'')}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--surface-2);flex-shrink:0;" />
-      <div style="flex:1;min-width:0;">
-        <span style="color:var(--lyrics-color);font-size:13px;display:block;">${escHtml(u.displayName||u.email||'')}</span>
-        ${infoTags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;">${infoTags.join('')}</div>` : ''}
-      </div>
-      ${selected ? '<iconify-icon icon="mdi:check" style="font-size:16px;color:var(--accent-soft);flex-shrink:0;"></iconify-icon>' : ''}
-    </div>`;
-  }).join('');
-}
-
-function filterCustomGroupUsers() {
-  renderCustomGroupUsers(document.getElementById('custom-group-search').value);
-}
-
-function toggleCustomMember(uid) {
-  if (selectedCustomMembers.includes(uid)) selectedCustomMembers = selectedCustomMembers.filter(u => u !== uid);
-  else selectedCustomMembers.push(uid);
-  renderCustomGroupUsers(document.getElementById('custom-group-search').value);
-  const container = document.getElementById('selected-custom-members');
-  container.innerHTML = selectedCustomMembers.map(uid => {
-    const u = allUsers.find(u => u.uid === uid);
-    if (!u) return '';
-    return `<span style="display:flex;align-items:center;gap:4px;background:var(--surface-2);border-radius:999px;padding:3px 10px 3px 6px;font-size:12px;color:var(--text-secondary);">
-      <img src="${escHtml(u.photoURL||'')}" style="width:18px;height:18px;border-radius:50%;" />
-      ${escHtml(u.displayName||'')}
-    </span>`;
-  }).join('');
-}
 
 async function saveSetlist() {
   const name = document.getElementById('new-setlist-name').value.trim();
@@ -4923,7 +4671,7 @@ async function saveSetlist() {
 
   if (!await ensureServiceAuth()) return;
   const data = {
-    name, isPrivate: false, isCustomGroup: false, songs: [],
+    name, songs: [],
     createdBy: 'service',
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -4969,26 +4717,6 @@ function renderUserBadges(u) {
   });
   if (badges.length === 0) badges.push(`<span class="role-badge badge-guest">Guest</span>`);
   return badges.join('');
-}
-
-// Render small horizontal avatars for custom group whitelist
-function renderWhitelistAvatars(uids) {
-  if (!uids || !uids.length) return '';
-  const visible = uids.slice(0, 4);
-  const pills = visible.map((uid) => {
-    const u = allUsers.find(x => x.uid === uid);
-    const fullName = u?.displayName || '';
-    const firstName = fullName.split(' ')[0] || 'User';
-    const avatarStyle = `width:18px;height:18px;border-radius:50%;flex-shrink:0;overflow:hidden;background:var(--surface-3);display:flex;align-items:center;justify-content:center;`;
-    const avatar = (u && u.photoURL)
-      ? `<img src="${escHtml(u.photoURL)}" style="${avatarStyle}object-fit:cover;" onerror="this.outerHTML='<div style=\\'${avatarStyle}\\'><iconify-icon icon=\\'mdi:account\\' style=\\'font-size:11px;color:var(--text-secondary);\\'></iconify-icon></div>'" />`
-      : `<div style="${avatarStyle}"><iconify-icon icon="mdi:account" style="font-size:11px;color:var(--text-secondary);"></iconify-icon></div>`;
-    return `<span title="${escHtml(fullName)}" style="display:inline-flex;align-items:center;gap:4px;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);padding:2px 8px 2px 2px;font-size:11px;color:var(--text-secondary);font-weight:500;">${avatar}${escHtml(firstName)}</span>`;
-  }).join('');
-  const extra = uids.length > 4
-    ? `<span style="display:inline-flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:var(--radius-pill);padding:2px 9px;font-size:11px;color:var(--text-muted);font-weight:600;">+${uids.length-4}</span>`
-    : '';
-  return `<div style="display:flex;align-items:center;gap:5px;margin-top:8px;flex-wrap:wrap;">${pills}${extra}</div>`;
 }
 
 // ─── USER DETAIL VIEW ───────────────────────────────────────────────────────
@@ -5300,9 +5028,7 @@ const ALL_ABILITIES = [
   { id: 'addSong',             label: 'Add Song',              icon: 'mdi:music-note-plus' },
   { id: 'editSong',            label: 'Edit Song',             icon: 'mdi:pencil' },
   { id: 'deleteSong',          label: 'Delete Song',           icon: 'mdi:delete' },
-  { id: 'createPublicSetlist', label: 'Create Public Setlist', icon: 'mdi:earth' },
-  { id: 'createPrivateSetlist',label: 'Create Private Setlist',icon: 'mdi:lock' },
-  { id: 'createCustomSetlist', label: 'Create Custom Setlist', icon: 'mdi:lightning-bolt' },
+  { id: 'createPublicSetlist', label: 'Create Setlist',        icon: 'mdi:playlist-plus' },
   { id: 'editSetlist',         label: 'Edit Setlist',          icon: 'mdi:playlist-edit' },
   { id: 'deleteSetlist',       label: 'Delete Setlist',        icon: 'mdi:playlist-remove' },
   { id: 'canCreateSetlist',    label: 'Create Any Setlist',    icon: 'mdi:playlist-plus' },
@@ -6871,33 +6597,6 @@ function _startModalDrag(e, sheet) {
 
 
 <!-- MANAGE MEMBERS MODAL -->
-<div id="manage-members-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-sheet" style="min-height:320px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
-    <div class="modal-handle" style="flex-shrink:0;"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
-      <h3 style="color:var(--lyrics-color);font-size:16px;font-weight:700;margin:0;">Manage Members</h3>
-      <button onclick="closeManageMembersModal()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;">✕</button>
-    </div>
-    <!-- Current members -->
-    <div style="flex-shrink:0;margin-bottom:14px;">
-      <div class="section-label" style="margin-bottom:8px;">Current Members</div>
-      <div id="manage-current-members" style="display:flex;flex-direction:column;gap:var(--list-gap);"></div>
-    </div>
-    <!-- Divider -->
-    <div style="height:1px;background:var(--surface-2);margin-bottom:14px;flex-shrink:0;"></div>
-    <!-- Add members -->
-    <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
-      <div class="section-label" style="margin-bottom:8px;flex-shrink:0;">Add Members</div>
-      <div style="position:relative;margin-bottom:8px;flex-shrink:0;">
-        <iconify-icon icon="mdi:magnify" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-muted);pointer-events:none;"></iconify-icon>
-        <input type="text" class="input-field" style="padding-left:32px;font-size:13px;" id="manage-members-search"
-          placeholder="Search users to add..." oninput="filterManageMembers()" />
-      </div>
-      <div id="manage-add-members-list" style="flex:1;min-height:80px;overflow-y:auto;background:var(--canvas-bg);border-radius:8px;"></div>
-    </div>
-  </div>
-</div>
-
 
 <!-- UPDATE AVAILABLE MODAL -->
 <div id="update-modal" class="modal-overlay center" style="display:none;z-index:10000;">
@@ -6978,6 +6677,12 @@ function _startModalDrag(e, sheet) {
 
 
 <div id="song-filter-menu" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:8px;min-width:168px;z-index:900;box-shadow:0 4px 20px rgba(30,10,10,0.32);" onclick="event.stopPropagation()">
+          <button id="song-sort-newest" onclick="setSongSort('newest')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+            <iconify-icon icon="mdi:sort-clock-descending" style="font-size:14px;"></iconify-icon><span style="flex:1;">Newest First</span><iconify-icon id="song-sort-newest-chk" icon="mdi:check" style="font-size:13px;opacity:0;color:var(--accent);"></iconify-icon>
+          </button>
+          <button id="song-sort-oldest" onclick="setSongSort('oldest')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
+            <iconify-icon icon="mdi:sort-clock-ascending" style="font-size:14px;"></iconify-icon><span style="flex:1;">Oldest First</span><iconify-icon id="song-sort-oldest-chk" icon="mdi:check" style="font-size:13px;opacity:0;color:var(--accent);"></iconify-icon>
+          </button>
           <button id="song-sort-az" onclick="setSongSort('az')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
             <iconify-icon icon="mdi:sort-alphabetical-ascending" style="font-size:14px;"></iconify-icon><span style="flex:1;">A–Z</span><iconify-icon id="song-sort-az-chk" icon="mdi:check" style="font-size:13px;opacity:0;color:var(--accent);"></iconify-icon>
           </button>
@@ -7006,21 +6711,6 @@ function _startModalDrag(e, sheet) {
           </button>
           <button id="setlist-sort-za" onclick="setSetlistSort('za')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
             <iconify-icon icon="mdi:sort-alphabetical-descending" style="font-size:14px;"></iconify-icon><span style="flex:1;">Z–A</span><iconify-icon icon="mdi:check" style="font-size:13px;color:var(--accent);" class="sort-chk" data-for="za"></iconify-icon>
-          </button>
-          <div style="padding:6px 8px 4px;border-top:1px solid var(--border-color);margin-top:4px;">
-            <span style="color:var(--text-muted);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Filter</span>
-          </div>
-          <button id="setlist-filter-all" onclick="setSetlistFilter('all')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-            <iconify-icon icon="mdi:playlist-music" style="font-size:14px;color:var(--text-secondary);"></iconify-icon><span style="flex:1;">All Types</span><iconify-icon icon="mdi:check" style="font-size:13px;color:var(--accent);" class="filter-chk" data-for="all"></iconify-icon>
-          </button>
-          <button id="setlist-filter-public" onclick="setSetlistFilter('public')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-            <iconify-icon icon="mdi:earth" style="font-size:14px;color:#34d399;"></iconify-icon><span style="flex:1;">Public</span><iconify-icon icon="mdi:check" style="font-size:13px;color:var(--accent);" class="filter-chk" data-for="public"></iconify-icon>
-          </button>
-          <button id="setlist-filter-private" onclick="setSetlistFilter('private')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-            <iconify-icon icon="mdi:lock" style="font-size:14px;color:#fb923c;"></iconify-icon><span style="flex:1;">Private</span><iconify-icon icon="mdi:check" style="font-size:13px;color:var(--accent);" class="filter-chk" data-for="private"></iconify-icon>
-          </button>
-          <button id="setlist-filter-custom" onclick="setSetlistFilter('custom')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
-            <iconify-icon icon="mdi:lightning-bolt" style="font-size:14px;color:var(--accent-soft);"></iconify-icon><span style="flex:1;">Custom Group</span><iconify-icon icon="mdi:check" style="font-size:13px;color:var(--accent-soft);" class="filter-chk" data-for="custom"></iconify-icon>
           </button>
 </div><!-- /setlist-filter-menu -->
 <div id="user-filter-menu" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:12px;padding:6px;min-width:180px;z-index:9000;box-shadow:0 4px 20px rgba(30,10,10,0.32);" onclick="event.stopPropagation()">
