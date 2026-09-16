@@ -280,6 +280,9 @@
     ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 2px; }
     /* Main content scrollbar — clipped so it never appears under top/bottom nav */
     #main-content { scrollbar-width: thin; }
+    #main-content::-webkit-scrollbar { width: 4px; }
+    #main-content::-webkit-scrollbar-track { background: transparent; }
+    #main-content::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
     #main-content::-webkit-scrollbar { width: 3px; }
     #main-content::-webkit-scrollbar-track {
       background: transparent;
@@ -792,10 +795,13 @@ button:active::after { background: rgba(255,255,255,0.12); }
   <!-- Song header strip — title+artist beside the back button, always visible while a song is open.
        Background fades in on scroll so lyrics don't show through underneath it. -->
   <div id="song-sheet-topbar" style="display:none;position:fixed;top:0;left:0;right:0;height:calc(58px + env(safe-area-inset-top,0px));z-index:497;pointer-events:none;transition:background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;border-bottom:1px solid transparent;">
-    <div style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));height:46px;left:calc(var(--view-px) + 46px + 8px);right:var(--view-px);display:flex;flex-direction:column;justify-content:center;min-width:0;">
+    <div style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));height:46px;left:calc(var(--view-px) + 46px + 8px);right:calc(var(--view-px) + 46px + 8px);display:flex;flex-direction:column;justify-content:center;min-width:0;">
       <div id="sheet-collapsed-title-text" style="color:var(--lyrics-color);font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       <div id="sheet-collapsed-artist-text" style="color:var(--text-secondary);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
     </div>
+    <button id="sheet-heart-btn" onclick="toggleFavouriteSheet()" style="pointer-events:auto;position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:var(--view-px);width:46px;height:46px;background:transparent;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Add to Favourites">
+      <iconify-icon icon="mdi:heart-outline" style="font-size:22px;color:var(--text-muted);"></iconify-icon>
+    </button>
   </div>
 
   <!-- FLOATING SEARCH + FILTER (top-right, per-tab) — one seamless capsule -->
@@ -847,25 +853,18 @@ button:active::after { background: rgba(255,255,255,0.12); }
 
       <!-- SONG SHEET VIEW -->
       <div id="song-sheet-view" style="display:none;">
-        <div id="song-sheet-subheader" style="padding:8px var(--view-px);border-bottom:1px solid var(--border-color);margin-bottom:8px;">
+        <div id="song-sheet-subheader" style="padding:4px var(--view-px) 6px;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
           <div style="display:flex;align-items:flex-start;justify-content:flex-end;gap:8px;">
-            <div style="flex:1;min-width:0;display:none;">
-              <h2 id="sheet-song-title" style="color:var(--lyrics-color);font-size:16px;font-weight:700;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></h2>
-              <p id="sheet-song-artist" style="color:var(--text-secondary);font-size:13px;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></p>
-            </div>
             <button id="sheet-setlist-btn" onclick="openSetlistSongsSheet()" style="display:none;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:10px;cursor:pointer;padding:6px 10px;align-items:center;gap:4px;flex-shrink:0;color:var(--text-secondary);font-size:12px;font-weight:600;transition:background 0.15s var(--ease-smooth), border-color 0.15s var(--ease-smooth);">
               <iconify-icon icon="mdi:playlist-music" style="font-size:16px;"></iconify-icon>
               Songs
-            </button>
-            <button id="sheet-heart-btn" onclick="toggleFavouriteSheet()" style="background:transparent;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;flex-shrink:0;" title="Add to Favourites">
-              <iconify-icon icon="mdi:heart-outline" style="font-size:22px;color:var(--text-muted);"></iconify-icon>
             </button>
           </div>
           <!-- SETLIST POSITION INDICATOR — dots with index badge -->
           <div id="setlist-dot-indicator" style="display:none;align-items:center;justify-content:center;gap:5px;padding:6px 0 2px;flex-wrap:wrap;"></div>
           <!-- MUSICIAN/LEAD/SUBADMIN/ADMIN CONTROLS -->
-          <div id="musician-controls" style="margin-top:8px;">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
+          <div id="musician-controls" style="margin-top:4px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
               <button id="key-selector-btn" class="ctrl-pill" onclick="openKeyModal()">
                 <iconify-icon icon="mdi:music-clef-treble" style="font-size:16px;color:var(--accent-soft);"></iconify-icon>
                 Key: <span id="current-key-display">C</span>
@@ -880,9 +879,9 @@ button:active::after { background: rgba(255,255,255,0.12); }
             </div>
           </div>
           <!-- SINGER/TECH CONTROLS -->
-          <div id="singer-controls" style="display:none;margin-top:8px;"></div>
+          <div id="singer-controls" style="display:none;margin-top:4px;"></div>
           <!-- SHARED ZOOM CONTROLS — visible to all roles -->
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
             <button class="zoom-btn" onclick="zoomStep(-1)" title="Zoom out" aria-label="Zoom out">
               <iconify-icon icon="mdi:minus" style="font-size:16px;"></iconify-icon>
             </button>
@@ -2482,8 +2481,6 @@ function setupListeners() {
     if (currentSongId) {
       const updated = allSongs.find(s => s.id === currentSongId);
       if (updated) {
-        document.getElementById('sheet-song-title').textContent = updated.title || '';
-        document.getElementById('sheet-song-artist').textContent = updated.artist || '';
         const _tt = document.getElementById('sheet-collapsed-title-text');
         const _ta = document.getElementById('sheet-collapsed-artist-text');
         if (_tt) _tt.textContent = updated.title || '';
@@ -2944,8 +2941,6 @@ function openSongSheet(songId, fromSetlist) {
   const sheetView = document.getElementById('song-sheet-view');
   sheetView.style.display = 'block';
   sheetView.style.opacity = '1';
-  document.getElementById('sheet-song-title').textContent = song.title || '';
-  document.getElementById('sheet-song-artist').textContent = song.artist || '';
   const topbar = document.getElementById('song-sheet-topbar');
   if (topbar) {
     document.getElementById('sheet-collapsed-title-text').textContent = song.title || '';
