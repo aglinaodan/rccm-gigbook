@@ -792,7 +792,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
   <!-- Song header strip — title+artist beside the back button, always visible while a song is open.
        Background fades in on scroll so lyrics don't show through underneath it. -->
   <div id="song-sheet-topbar" style="display:none;position:fixed;top:0;left:0;right:0;height:calc(58px + env(safe-area-inset-top,0px));z-index:497;pointer-events:none;transition:background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;border-bottom:1px solid transparent;">
-    <div style="height:100%;display:flex;flex-direction:column;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 4px) var(--view-px) 4px calc(var(--view-px) + 46px + 8px);min-width:0;">
+    <div style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));height:46px;left:calc(var(--view-px) + 46px + 8px);right:var(--view-px);display:flex;flex-direction:column;justify-content:center;min-width:0;">
       <div id="sheet-collapsed-title-text" style="color:var(--lyrics-color);font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       <div id="sheet-collapsed-artist-text" style="color:var(--text-secondary);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
     </div>
@@ -2316,6 +2316,28 @@ function buildBottomNav() {
   }
 }
 
+// ── Force header-actions to match the list's real rendered edges ──────────
+// CSS (var(--view-px) on both) should already make these line up, but on some
+// devices they've still drifted apart for reasons that don't show up in code
+// review. This measures the active tab panel's actual content edges at
+// runtime and pins the capsule to them directly, so it can't drift regardless
+// of the underlying cause (safe-area quirks, browser chrome, etc.).
+function syncHeaderActionsToList() {
+  const actions = document.getElementById('header-actions');
+  const panel = document.querySelector('.tab-panel.active');
+  if (!actions || !panel) return;
+  const rect = panel.getBoundingClientRect();
+  const cs = getComputedStyle(panel);
+  const contentLeft = rect.left + parseFloat(cs.paddingLeft || '0');
+  const contentRight = window.innerWidth - rect.right + parseFloat(cs.paddingRight || '0');
+  // Respect the back-button reservation already applied via home-btn visibility
+  const backBtnVisible = document.getElementById('home-btn')?.style.display !== 'none';
+  actions.style.left = backBtnVisible ? `calc(${contentLeft}px + 46px + 8px)` : `${contentLeft}px`;
+  actions.style.right = `${contentRight}px`;
+}
+window.addEventListener('resize', syncHeaderActionsToList);
+window.addEventListener('orientationchange', () => setTimeout(syncHeaderActionsToList, 100));
+
 function switchTab(tab) {
   closeSongSheet();
   closeSetlistDetail();
@@ -2341,6 +2363,7 @@ function switchTab(tab) {
   closeHeaderSearch();
   syncHeaderFilterDot();
   buildBottomNav();
+  requestAnimationFrame(syncHeaderActionsToList);
 }
 
 // Users sub-tab state
@@ -2416,12 +2439,9 @@ function updateHomeBtn(show) {
   const shouldShow = show && !atRoot;
   if (backBtn) backBtn.style.display = shouldShow ? 'flex' : 'none';
   // Shift the whole search/filter row right when the back button is visible, so it
-  // doesn't overlap it; otherwise align flush with the list's left inset below.
+  // doesn't overlap it; otherwise align flush with the list's actual rendered left edge.
+  syncHeaderActionsToList();
   const actions = document.getElementById('header-actions');
-  if (actions) {
-    actions.style.left = shouldShow ? 'calc(var(--view-px) + 46px + 8px)' : 'var(--view-px)';
-  }
-
   // Hide search/filter when drilling into detail or on admin tab
   const songSheetOpen = document.getElementById('song-sheet-view')?.style.display === 'block';
   if (actions) {
