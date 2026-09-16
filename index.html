@@ -4119,15 +4119,38 @@ function _parseGeneric(html, url) {
   return { title, artist, key, content: content.trim() };
 }
 
+// Gigbook's own Cloudflare Worker endpoint (see /worker/gigbook-proxy-worker.js
+// for the deployable script). Once deployed, paste its URL here — e.g.
+// 'https://gigbook-proxy.yoursubdomain.workers.dev'. Leave blank to skip
+// straight to the free public-proxy fallback chain below.
+const GIGBOOK_PROXY_WORKER_URL = '';
+
 async function _fetchViaProxies(url, onAttempt) {
   const proxies = [
     (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
     (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
     (u) => 'https://api.cors.lol/url=' + encodeURIComponent(u)
   ];
+  // Try the dedicated Worker first, if configured — it's the durable option,
+  // the free proxies below are only a backup in case Cloudflare itself has
+  // an outage.
+  const totalAttempts = proxies.length + (GIGBOOK_PROXY_WORKER_URL ? 1 : 0);
+  if (GIGBOOK_PROXY_WORKER_URL) {
+    if (onAttempt) onAttempt(1, totalAttempts);
+    const controller0 = new AbortController();
+    const timer0 = setTimeout(() => controller0.abort(), 15000);
+    try {
+      const resp0 = await fetch(GIGBOOK_PROXY_WORKER_URL + '?url=' + encodeURIComponent(url), { signal: controller0.signal });
+      clearTimeout(timer0);
+      if (resp0.ok) {
+        const html0 = await resp0.text();
+        if (html0 && html0.length >= 200) return html0;
+      }
+    } catch (e) { clearTimeout(timer0); /* fall through to public proxies */ }
+  }
   let lastErr;
   for (let i = 0; i < proxies.length; i++) {
-    if (onAttempt) onAttempt(i + 1, proxies.length);
+    if (onAttempt) onAttempt(i + 1 + (GIGBOOK_PROXY_WORKER_URL ? 1 : 0), totalAttempts);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
