@@ -1995,6 +1995,7 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) _resubscribeIfStal
 (function initSheetTitleCollapse() {
   const mainContent = document.getElementById('main-content');
   const topbar = document.getElementById('song-sheet-topbar');
+  const backBtn = document.getElementById('home-btn');
   if (!mainContent || !topbar) return;
   const THRESHOLD = 24;
   mainContent.addEventListener('scroll', () => {
@@ -2005,6 +2006,16 @@ window.addEventListener('pageshow', (e) => { if (e.persisted) _resubscribeIfStal
     topbar.style.backdropFilter = scrolled ? 'blur(12px)' : 'none';
     topbar.style.webkitBackdropFilter = scrolled ? 'blur(12px)' : 'none';
     topbar.style.borderBottomColor = scrolled ? 'var(--border-color)' : 'transparent';
+    // Once the bar itself has a visible surface, drop the back button's own
+    // circular background/border/shadow so it blends into the shared bar
+    // instead of looking like a separate button floating on top of it.
+    if (backBtn) {
+      backBtn.style.background = scrolled ? 'transparent' : 'var(--surface-1)';
+      backBtn.style.border = scrolled ? 'none' : '1px solid var(--border-color)';
+      backBtn.style.boxShadow = scrolled ? 'none' : 'var(--shadow-float)';
+      backBtn.style.backdropFilter = scrolled ? 'none' : 'blur(10px)';
+      backBtn.style.webkitBackdropFilter = scrolled ? 'none' : 'blur(10px)';
+    }
   }, { passive: true });
 })();
 
@@ -2289,9 +2300,9 @@ function syncHeaderFilterDot() {
     headerBtn.style.color       = 'var(--accent-soft)';
     headerBtn.style.boxShadow   = 'inset 0 0 0 1.5px var(--accent)';
   } else {
-    headerBtn.style.background  = '';
-    headerBtn.style.color       = '';
-    headerBtn.style.boxShadow   = '';
+    headerBtn.style.background  = 'transparent';
+    headerBtn.style.color       = 'var(--text-secondary)';
+    headerBtn.style.boxShadow   = 'none';
   }
 }
 
@@ -2945,6 +2956,14 @@ function openSongSheet(songId, fromSetlist) {
     topbar.style.webkitBackdropFilter = 'none';
     topbar.style.borderBottomColor = 'transparent';
   }
+  const backBtnOpen = document.getElementById('home-btn');
+  if (backBtnOpen) {
+    backBtnOpen.style.background = 'var(--surface-1)';
+    backBtnOpen.style.border = '1px solid var(--border-color)';
+    backBtnOpen.style.boxShadow = 'var(--shadow-float)';
+    backBtnOpen.style.backdropFilter = 'blur(10px)';
+    backBtnOpen.style.webkitBackdropFilter = 'blur(10px)';
+  }
   const navTitle = document.getElementById('top-nav-title');
   if (navTitle) { navTitle.textContent = song.title || ''; navTitle.style.display = 'block'; }
   document.getElementById('current-key-display').textContent = localKey;
@@ -3071,6 +3090,14 @@ function closeSongSheet() {
   document.getElementById('song-sheet-view').style.display = 'none';
   const topbarClose = document.getElementById('song-sheet-topbar');
   if (topbarClose) { topbarClose.style.display = 'none'; topbarClose.style.background = 'transparent'; topbarClose.style.backdropFilter = 'none'; topbarClose.style.webkitBackdropFilter = 'none'; topbarClose.style.borderBottomColor = 'transparent'; }
+  const backBtnClose = document.getElementById('home-btn');
+  if (backBtnClose) {
+    backBtnClose.style.background = 'var(--surface-1)';
+    backBtnClose.style.border = '1px solid var(--border-color)';
+    backBtnClose.style.boxShadow = 'var(--shadow-float)';
+    backBtnClose.style.backdropFilter = 'blur(10px)';
+    backBtnClose.style.webkitBackdropFilter = 'blur(10px)';
+  }
   document.getElementById('autoscroll-fab').style.display = 'none';
   const reshowClose = document.getElementById('autoscroll-reshow-btn');
   if (reshowClose) reshowClose.style.display = 'none';
