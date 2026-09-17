@@ -1,6 +1,6 @@
 {
   "name": "RCCM Gigbook",
-  "short_name": "Gigbook",
+  "short_name": "RCCM Gigbook",
   "description": "Guitar Chords, Lyrics, and Setlist App for live worship performances",
   "start_url": "/rccm-gigbook/",
   "scope": "/rccm-gigbook/",
