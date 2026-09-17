@@ -1451,26 +1451,20 @@ button:active::after { background: rgba(255,255,255,0.12); }
           <input type="text" class="input-field" id="new-song-artist" placeholder="Enter artist name" oninput="_updateSaveSongBtn()" />
         </div>
       </div>
-      <div style="display:flex;gap:10px;">
+      <div style="display:flex;gap:10px;position:relative;">
         <div style="flex:1;min-width:0;">
           <label style="color:var(--text-secondary);font-size:12px;display:block;margin-bottom:4px;">Original Key</label>
-          <select class="select-field" id="new-song-key" onchange="_updateSaveSongBtn()">
-            <option>C</option><option>C#</option><option>D</option><option>D#</option>
-            <option>E</option><option>F</option><option>F#</option><option>G</option>
-            <option>G#</option><option>A</option><option>A#</option><option>B</option>
-          </select>
+          <button type="button" id="new-song-key-btn" class="select-field" onclick="toggleSongKeyMenu()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;width:100%;text-align:left;">
+            <span id="new-song-key-label">C</span>
+            <iconify-icon icon="mdi:chevron-down" style="font-size:16px;color:var(--text-muted);"></iconify-icon>
+          </button>
         </div>
         <div style="flex:1;min-width:0;">
           <label style="color:var(--text-secondary);font-size:12px;display:block;margin-bottom:4px;">Capo</label>
-          <select class="select-field" id="new-song-capo">
-            <option value="0">None (Open)</option>
-            <option value="1">1st fret</option><option value="2">2nd fret</option>
-            <option value="3">3rd fret</option><option value="4">4th fret</option>
-            <option value="5">5th fret</option><option value="6">6th fret</option>
-            <option value="7">7th fret</option><option value="8">8th fret</option>
-            <option value="9">9th fret</option><option value="10">10th fret</option>
-            <option value="11">11th fret</option>
-          </select>
+          <button type="button" id="new-song-capo-btn" class="select-field" onclick="toggleSongCapoMenu()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;width:100%;text-align:left;">
+            <span id="new-song-capo-label">None (Open)</span>
+            <iconify-icon icon="mdi:chevron-down" style="font-size:16px;color:var(--text-muted);"></iconify-icon>
+          </button>
         </div>
       </div>
       <!-- Intake switcher — Add mode only -->
@@ -2596,8 +2590,98 @@ function filterSongs() {
 }
 
 function closeAllDropdowns() {
-  const ids = ['song-filter-menu','setlist-filter-menu','user-filter-menu'];
+  const ids = ['song-filter-menu','setlist-filter-menu','user-filter-menu','new-song-key-menu','new-song-capo-menu'];
   ids.forEach(id => { const m = document.getElementById(id); if (m) m.style.display = 'none'; });
+}
+
+// Generalized version of positionFloatingMenu — positions any menu below any
+// trigger element, instead of being hardcoded to #header-filter-btn.
+function positionFloatingMenuNear(menuId, triggerId, otherMenuIds) {
+  const menu = document.getElementById(menuId);
+  const trigger = document.getElementById(triggerId);
+  if (!menu || !trigger) return;
+  const isOpen = menu.style.display !== 'none';
+  (otherMenuIds || []).forEach(id => { const m = document.getElementById(id); if (m) m.style.display = 'none'; });
+  if (isOpen) { menu.style.display = 'none'; return; }
+  const r = trigger.getBoundingClientRect();
+  if (r.width === 0 && r.height === 0) return;
+  menu.style.position = 'fixed';
+  menu.style.top = (r.bottom + 6) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 228)) + 'px';
+  menu.style.right = 'auto';
+  menu.style.display = menu.dataset.grid === '1' ? 'grid' : 'block';
+}
+
+const KEY_OPTIONS = ['C','C#','Db','D','D#','Eb','E','F','F#','Gb','G','G#','Ab','A','A#','Bb','B'];
+let _newSongKeyValue = 'C';
+let _newSongCapoValue = 0;
+
+function _renderSongKeyMenuOnce() {
+  const menu = document.getElementById('new-song-key-menu');
+  if (!menu || menu.dataset.built === '1') return;
+  menu.dataset.grid = '1';
+  menu.innerHTML = KEY_OPTIONS.map(k => `
+    <button type="button" onclick="selectSongKey('${k}')" class="key-menu-opt" data-key="${k}"
+      style="background:transparent;border:1px solid var(--border-subtle);border-radius:8px;color:var(--lyrics-color);padding:8px 4px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s, border-color 0.15s;">
+      ${k}
+    </button>`).join('');
+  menu.dataset.built = '1';
+}
+
+function toggleSongKeyMenu() {
+  _renderSongKeyMenuOnce();
+  positionFloatingMenuNear('new-song-key-menu', 'new-song-key-btn', ['new-song-capo-menu']);
+  _updateSongKeyMenuActive();
+}
+
+function _updateSongKeyMenuActive() {
+  document.querySelectorAll('#new-song-key-menu .key-menu-opt').forEach(el => {
+    const active = el.dataset.key === _newSongKeyValue;
+    el.style.background = active ? 'var(--accent-glow)' : 'transparent';
+    el.style.borderColor = active ? 'var(--accent)' : 'var(--border-subtle)';
+    el.style.color = active ? 'var(--accent-soft)' : 'var(--lyrics-color)';
+  });
+}
+
+function selectSongKey(key) {
+  _newSongKeyValue = key;
+  const label = document.getElementById('new-song-key-label');
+  if (label) label.textContent = key;
+  document.getElementById('new-song-key-menu').style.display = 'none';
+  _updateSaveSongBtn();
+}
+
+const CAPO_LABELS = ['None (Open)','1st fret','2nd fret','3rd fret','4th fret','5th fret','6th fret','7th fret','8th fret','9th fret','10th fret','11th fret'];
+function _renderSongCapoMenuOnce() {
+  const menu = document.getElementById('new-song-capo-menu');
+  if (!menu || menu.dataset.built === '1') return;
+  menu.innerHTML = CAPO_LABELS.map((label, fret) => `
+    <button type="button" onclick="selectSongCapo(${fret})" class="capo-menu-opt" data-fret="${fret}"
+      style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;">
+      ${label}
+    </button>`).join('');
+  menu.dataset.built = '1';
+}
+
+function toggleSongCapoMenu() {
+  _renderSongCapoMenuOnce();
+  positionFloatingMenuNear('new-song-capo-menu', 'new-song-capo-btn', ['new-song-key-menu']);
+  _updateSongCapoMenuActive();
+}
+
+function _updateSongCapoMenuActive() {
+  document.querySelectorAll('#new-song-capo-menu .capo-menu-opt').forEach(el => {
+    const active = Number(el.dataset.fret) === _newSongCapoValue;
+    el.style.background = active ? 'var(--surface-2)' : 'transparent';
+    el.style.color = active ? 'var(--accent-soft)' : 'var(--lyrics-color)';
+  });
+}
+
+function selectSongCapo(fret) {
+  _newSongCapoValue = fret;
+  const label = document.getElementById('new-song-capo-label');
+  if (label) label.textContent = CAPO_LABELS[fret];
+  document.getElementById('new-song-capo-menu').style.display = 'none';
 }
 
 function positionFloatingMenu(menuId) {
@@ -3637,11 +3721,13 @@ function stopAutoScroll() {
 
 // Close filter menus when tapping outside them
 document.addEventListener('click', (e) => {
-  const menus = ['song-filter-menu','setlist-filter-menu','user-filter-menu'];
+  const menus = ['song-filter-menu','setlist-filter-menu','user-filter-menu','new-song-key-menu','new-song-capo-menu'];
   const filterBtn = document.getElementById('header-filter-btn');
+  const keyBtn = document.getElementById('new-song-key-btn');
+  const capoBtn = document.getElementById('new-song-capo-btn');
   const clickedInsideMenu = menus.some(id => document.getElementById(id)?.contains(e.target));
-  const clickedFilterBtn = filterBtn?.contains(e.target);
-  if (!clickedInsideMenu && !clickedFilterBtn) {
+  const clickedTriggerBtn = filterBtn?.contains(e.target) || keyBtn?.contains(e.target) || capoBtn?.contains(e.target);
+  if (!clickedInsideMenu && !clickedTriggerBtn) {
     menus.forEach(id => { const m = document.getElementById(id); if(m) m.style.display = 'none'; });
   }
 });
@@ -3983,8 +4069,7 @@ function openCreateSongModal() {
   document.getElementById('new-song-title').value = '';
   document.getElementById('new-song-artist').value = '';
   document.getElementById('new-song-content').value = '';
-  const capoSelReset = document.getElementById('new-song-capo');
-  if (capoSelReset) capoSelReset.value = '0';
+  selectSongCapo(0);
   const linkInput = document.getElementById('link-url-input');
   if (linkInput) linkInput.value = '';
   const linkStatus = document.getElementById('link-status');
@@ -4007,8 +4092,7 @@ function openCreateSongModal() {
   else { const h = modal.querySelector('h3'); if (h) h.textContent = 'Add New Song'; }
   const saveBtnLabelReset = document.getElementById('save-song-btn-label');
   if (saveBtnLabelReset) saveBtnLabelReset.textContent = 'Save Song';
-  const keySelReset = document.getElementById('new-song-key');
-  if (keySelReset) keySelReset.value = 'C';
+  selectSongKey('C');
   modal.style.display = 'flex';
   _animateModalIn(modal);
   _attachSwipeToClose(modal, closeCreateSongModal);
@@ -4025,20 +4109,16 @@ function openEditSongModal(songId) {
   document.getElementById('new-song-content').value = song.content || '';
   const mirrorEl = document.getElementById('edit-song-content-mirror');
   if (mirrorEl) mirrorEl.value = song.content || '';
-  const keySelEdit = document.getElementById('new-song-key');
-  if (keySelEdit) keySelEdit.value = song.key || 'C';
-  const capoSelEdit = document.getElementById('new-song-capo');
-  if (capoSelEdit) {
-    let fret = 0;
-    if (song.recommendedKey && song.key) {
-      const fromIdx = getNoteIndex(song.key), toIdx = getNoteIndex(song.recommendedKey);
-      if (fromIdx !== -1 && toIdx !== -1) {
-        fret = toIdx - fromIdx;
-        if (fret < 0) fret += 12;
-      }
+  selectSongKey(song.key || 'C');
+  let editFret = 0;
+  if (song.recommendedKey && song.key) {
+    const fromIdx = getNoteIndex(song.key), toIdx = getNoteIndex(song.recommendedKey);
+    if (fromIdx !== -1 && toIdx !== -1) {
+      editFret = toIdx - fromIdx;
+      if (editFret < 0) editFret += 12;
     }
-    capoSelEdit.value = String(fret);
   }
+  selectSongCapo(editFret);
   const modal = document.getElementById('create-song-modal');
   modal.dataset.editId = songId;
   // Hide intake switcher + all intake content areas
@@ -4253,9 +4333,8 @@ async function handleLinkImport() {
     if (parsed.title) document.getElementById('new-song-title').value = parsed.title;
     if (parsed.artist) document.getElementById('new-song-artist').value = parsed.artist;
     if (parsed.key) {
-      const keySel = document.getElementById('new-song-key');
-      const match = Array.from(keySel.options).find(o => o.value.toUpperCase() === String(parsed.key).toUpperCase());
-      if (match) keySel.value = match.value;
+      const match = KEY_OPTIONS.find(k => k.toUpperCase() === String(parsed.key).trim().toUpperCase());
+      if (match) selectSongKey(match);
     }
     // If the source stated a capo'd/sounding key distinct from the chord-shape key,
     // pre-select the matching Capo fret so it's reflected immediately.
@@ -4264,8 +4343,7 @@ async function handleLinkImport() {
       if (fromIdx !== -1 && toIdx !== -1) {
         let fret = toIdx - fromIdx;
         if (fret < 0) fret += 12;
-        const capoSel = document.getElementById('new-song-capo');
-        if (capoSel && fret > 0) capoSel.value = String(fret);
+        if (fret > 0) selectSongCapo(fret);
       }
     }
 
@@ -4475,8 +4553,8 @@ dragZone.addEventListener('drop', e => {
 async function saveSong() {
   const title = document.getElementById('new-song-title').value.trim();
   const artist = document.getElementById('new-song-artist').value.trim();
-  const key = document.getElementById('new-song-key').value;
-  const capoFret = parseInt(document.getElementById('new-song-capo')?.value || '0', 10) || 0;
+  const key = _newSongKeyValue;
+  const capoFret = _newSongCapoValue;
   if (!title) { showAlert('Missing Info', 'Please enter a song title.', 'mdi:alert-circle'); return; }
   const modal = document.getElementById('create-song-modal');
   const editId = modal?.dataset?.editId || '';
@@ -6842,6 +6920,9 @@ function _startModalDrag(e, sheet) {
 </div>
 
 
+
+<div id="new-song-key-menu" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:8px;min-width:220px;z-index:9500;box-shadow:0 4px 20px rgba(30,10,10,0.32);grid-template-columns:repeat(4, 1fr);gap:4px;" onclick="event.stopPropagation()"></div>
+<div id="new-song-capo-menu" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:8px;min-width:170px;z-index:9500;box-shadow:0 4px 20px rgba(30,10,10,0.32);max-height:60vh;overflow-y:auto;" onclick="event.stopPropagation()"></div>
 
 <div id="song-filter-menu" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:8px;min-width:168px;z-index:900;box-shadow:0 4px 20px rgba(30,10,10,0.32);" onclick="event.stopPropagation()">
           <button id="song-sort-newest" onclick="setSongSort('newest')" style="display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:none;color:var(--lyrics-color);padding:6px 8px;text-align:left;font-size:13px;cursor:pointer;border-radius:6px;" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='transparent'">
