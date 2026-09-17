@@ -814,7 +814,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
     <!-- Divider -->
     <div style="width:1px;align-self:stretch;margin:8px 0;background:var(--border-color);flex-shrink:0;"></div>
     <!-- Filter segment -->
-    <button id="header-filter-btn" onclick="openHeaderFilter()" style="width:46px;min-width:46px;height:100%;background:transparent;border:none;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:color 0.2s var(--ease-smooth), background 0.2s var(--ease-smooth);flex-shrink:0;">
+    <button id="header-filter-btn" onclick="openHeaderFilter()" style="width:46px;min-width:46px;height:100%;background:transparent;border:none;border-top-right-radius:22px;border-bottom-right-radius:22px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:color 0.2s var(--ease-smooth), background 0.2s var(--ease-smooth);flex-shrink:0;">
       <iconify-icon icon="mdi:tune-variant" style="font-size:20px;"></iconify-icon>
     </button>
   </div>
@@ -851,14 +851,8 @@ button:active::after { background: rgba(255,255,255,0.12); }
       <!-- SONG SHEET VIEW -->
       <div id="song-sheet-view" style="display:none;">
         <div id="song-sheet-subheader" style="padding:4px var(--view-px) 6px;border-bottom:1px solid var(--border-color);margin-bottom:6px;">
-          <div id="sheet-setlist-btn-row" style="display:none;align-items:flex-start;justify-content:flex-end;gap:8px;">
-            <button id="sheet-setlist-btn" onclick="openSetlistSongsSheet()" style="display:none;background:var(--surface-2);border:1px solid var(--border-subtle);border-radius:10px;cursor:pointer;padding:6px 10px;align-items:center;gap:4px;flex-shrink:0;color:var(--text-secondary);font-size:12px;font-weight:600;transition:background 0.15s var(--ease-smooth), border-color 0.15s var(--ease-smooth);">
-              <iconify-icon icon="mdi:playlist-music" style="font-size:16px;"></iconify-icon>
-              Songs
-            </button>
-          </div>
           <!-- SETLIST POSITION INDICATOR — dots with index badge -->
-          <div id="setlist-dot-indicator" style="display:none;align-items:center;justify-content:center;gap:5px;padding:6px 0 2px;flex-wrap:wrap;"></div>
+          <div id="setlist-dot-indicator" style="display:none;align-items:center;justify-content:center;gap:5px;padding:2px 0;flex-wrap:wrap;"></div>
           <!-- MUSICIAN/LEAD/SUBADMIN/ADMIN CONTROLS -->
           <div id="musician-controls" style="margin-top:4px;">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
@@ -870,7 +864,10 @@ button:active::after { background: rgba(255,255,255,0.12); }
                 <iconify-icon icon="mdi:guitar-pick" style="font-size:14px;"></iconify-icon>
                 Capo: <span id="capo-value" style="color:var(--accent-soft);font-weight:700;margin-left:2px;">0</span>
               </div>
-              <button id="lyrics-only-toggle-btn" class="ctrl-pill" onclick="toggleLyricsOnly()" style="margin-left:auto;padding:6px;" title="Lyrics Only">
+              <button id="sheet-setlist-btn" onclick="openSetlistSongsSheet()" class="ctrl-pill" style="display:none;margin-left:auto;padding:6px;" title="View Setlist Songs">
+                <iconify-icon icon="mdi:playlist-music" style="font-size:16px;"></iconify-icon>
+              </button>
+              <button id="lyrics-only-toggle-btn" class="ctrl-pill" onclick="toggleLyricsOnly()" style="padding:6px;" title="Lyrics Only">
                 <iconify-icon id="lyrics-toggle-icon" icon="mdi:text" style="font-size:16px;"></iconify-icon>
               </button>
             </div>
@@ -1454,13 +1451,27 @@ button:active::after { background: rgba(255,255,255,0.12); }
           <input type="text" class="input-field" id="new-song-artist" placeholder="Enter artist name" oninput="_updateSaveSongBtn()" />
         </div>
       </div>
-      <div>
-        <label style="color:var(--text-secondary);font-size:12px;display:block;margin-bottom:4px;">Original Key</label>
-        <select class="select-field" id="new-song-key">
-          <option>C</option><option>C#</option><option>D</option><option>D#</option>
-          <option>E</option><option>F</option><option>F#</option><option>G</option>
-          <option>G#</option><option>A</option><option>A#</option><option>B</option>
-        </select>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <label style="color:var(--text-secondary);font-size:12px;display:block;margin-bottom:4px;">Original Key</label>
+          <select class="select-field" id="new-song-key" onchange="_updateSaveSongBtn()">
+            <option>C</option><option>C#</option><option>D</option><option>D#</option>
+            <option>E</option><option>F</option><option>F#</option><option>G</option>
+            <option>G#</option><option>A</option><option>A#</option><option>B</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <label style="color:var(--text-secondary);font-size:12px;display:block;margin-bottom:4px;">Capo</label>
+          <select class="select-field" id="new-song-capo">
+            <option value="0">None (Open)</option>
+            <option value="1">1st fret</option><option value="2">2nd fret</option>
+            <option value="3">3rd fret</option><option value="4">4th fret</option>
+            <option value="5">5th fret</option><option value="6">6th fret</option>
+            <option value="7">7th fret</option><option value="8">8th fret</option>
+            <option value="9">9th fret</option><option value="10">10th fret</option>
+            <option value="11">11th fret</option>
+          </select>
+        </div>
       </div>
       <!-- Intake switcher — Add mode only -->
       <div id="intake-method-section">
@@ -1521,7 +1532,10 @@ button:active::after { background: rgba(255,255,255,0.12); }
 
     <!-- Fixed footer -->
     <div style="flex-shrink:0;padding-top:10px;">
-      <button id="save-song-btn" class="btn-primary" onclick="saveSong()" style="width:100%;" disabled>Save Song</button>
+      <button id="save-song-btn" class="btn-primary" onclick="saveSong()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;" disabled>
+        <span id="save-song-btn-spinner" class="spinner" style="display:none;width:16px;height:16px;border-width:2px;"></span>
+        <span id="save-song-btn-label">Save Song</span>
+      </button>
     </div>
 
   </div>
@@ -1549,7 +1563,10 @@ button:active::after { background: rgba(255,255,255,0.12); }
 
     <!-- Fixed footer -->
     <div style="flex-shrink:0;padding-top:10px;">
-      <button class="btn-primary" onclick="saveSetlist()" style="width:100%;">Create Setlist</button>
+      <button id="create-setlist-btn" class="btn-primary" onclick="saveSetlist()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <span id="create-setlist-btn-spinner" class="spinner" style="display:none;width:16px;height:16px;border-width:2px;"></span>
+        <span id="create-setlist-btn-label">Create Setlist</span>
+      </button>
       <p style="color:var(--text-muted);font-size:11px;text-align:center;margin:8px 0 0;line-height:1.5;">
         <iconify-icon icon="mdi:information-outline" style="font-size:12px;vertical-align:middle;margin-right:3px;"></iconify-icon>
         This setlist will be visible to all users.
@@ -2931,9 +2948,7 @@ function openSongSheet(songId, fromSetlist) {
     songsPanel.classList.add('active');
   }
   const setlistBtn = document.getElementById('sheet-setlist-btn');
-  const setlistBtnRow = document.getElementById('sheet-setlist-btn-row');
   if (setlistBtn) setlistBtn.style.display = openedFromSetlist ? 'flex' : 'none';
-  if (setlistBtnRow) setlistBtnRow.style.display = openedFromSetlist ? 'flex' : 'none';
   document.getElementById('songs-list-view').style.display = 'none';
   // Hide the Songs tab title when song sheet is open
   const songsTabHeader = document.querySelector('#tab-songs > div:first-child');
@@ -3950,7 +3965,6 @@ function _animateModalOut(modalOverlayEl, onDone) {
 // CREATE SONG MODAL
 // ============================================================
 let currentIntakeMode = 'text';
-let _pendingImportDisplayKey = ''; // set by Link Import when source states a capo'd/sounding key distinct from the chord-shape key
 function _updateSaveSongBtn() {
   const btn = document.getElementById('save-song-btn');
   if (!btn) return;
@@ -3969,7 +3983,8 @@ function openCreateSongModal() {
   document.getElementById('new-song-title').value = '';
   document.getElementById('new-song-artist').value = '';
   document.getElementById('new-song-content').value = '';
-  _pendingImportDisplayKey = '';
+  const capoSelReset = document.getElementById('new-song-capo');
+  if (capoSelReset) capoSelReset.value = '0';
   const linkInput = document.getElementById('link-url-input');
   if (linkInput) linkInput.value = '';
   const linkStatus = document.getElementById('link-status');
@@ -3990,8 +4005,10 @@ function openCreateSongModal() {
   const titleEl = document.getElementById('song-modal-title');
   if (titleEl) titleEl.textContent = 'Add New Song';
   else { const h = modal.querySelector('h3'); if (h) h.textContent = 'Add New Song'; }
-  const saveBtn = document.getElementById('save-song-btn');
-  if (saveBtn) saveBtn.textContent = 'Save Song';
+  const saveBtnLabelReset = document.getElementById('save-song-btn-label');
+  if (saveBtnLabelReset) saveBtnLabelReset.textContent = 'Save Song';
+  const keySelReset = document.getElementById('new-song-key');
+  if (keySelReset) keySelReset.value = 'C';
   modal.style.display = 'flex';
   _animateModalIn(modal);
   _attachSwipeToClose(modal, closeCreateSongModal);
@@ -4008,6 +4025,20 @@ function openEditSongModal(songId) {
   document.getElementById('new-song-content').value = song.content || '';
   const mirrorEl = document.getElementById('edit-song-content-mirror');
   if (mirrorEl) mirrorEl.value = song.content || '';
+  const keySelEdit = document.getElementById('new-song-key');
+  if (keySelEdit) keySelEdit.value = song.key || 'C';
+  const capoSelEdit = document.getElementById('new-song-capo');
+  if (capoSelEdit) {
+    let fret = 0;
+    if (song.recommendedKey && song.key) {
+      const fromIdx = getNoteIndex(song.key), toIdx = getNoteIndex(song.recommendedKey);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        fret = toIdx - fromIdx;
+        if (fret < 0) fret += 12;
+      }
+    }
+    capoSelEdit.value = String(fret);
+  }
   const modal = document.getElementById('create-song-modal');
   modal.dataset.editId = songId;
   // Hide intake switcher + all intake content areas
@@ -4023,8 +4054,8 @@ function openEditSongModal(songId) {
   const titleEl = document.getElementById('song-modal-title');
   if (titleEl) titleEl.textContent = 'Edit Song';
   else { const h = modal.querySelector('h3'); if (h) h.textContent = 'Edit Song'; }
-  const saveBtn = document.getElementById('save-song-btn');
-  if (saveBtn) saveBtn.textContent = 'Update Song';
+  const saveBtnLabelEdit = document.getElementById('save-song-btn-label');
+  if (saveBtnLabelEdit) saveBtnLabelEdit.textContent = 'Update Song';
   modal.style.display = 'flex';
   _animateModalIn(modal);
   pushState();
@@ -4226,16 +4257,24 @@ async function handleLinkImport() {
       const match = Array.from(keySel.options).find(o => o.value.toUpperCase() === String(parsed.key).toUpperCase());
       if (match) keySel.value = match.value;
     }
-    // Carry the source's recommended capo'd/sounding key through to save-time,
-    // so the song opens showing "Capo: N" immediately instead of "Open".
-    _pendingImportDisplayKey = parsed.displayKey || '';
+    // If the source stated a capo'd/sounding key distinct from the chord-shape key,
+    // pre-select the matching Capo fret so it's reflected immediately.
+    if (parsed.displayKey && parsed.key) {
+      const fromIdx = getNoteIndex(parsed.key), toIdx = getNoteIndex(parsed.displayKey);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        let fret = toIdx - fromIdx;
+        if (fret < 0) fret += 12;
+        const capoSel = document.getElementById('new-song-capo');
+        if (capoSel && fret > 0) capoSel.value = String(fret);
+      }
+    }
 
     // Switch to text mode and populate the chord sheet content
     setIntakeMode('text');
     document.getElementById('new-song-content').value = parsed.content || '';
     _updateSaveSongBtn();
-    if (_pendingImportDisplayKey) {
-      showAlert('Capo Detected', `This source recommends Key: ${_pendingImportDisplayKey} using a capo. Chord shapes were imported as written (Key: ${parsed.key}) — the song will open displaying Key: ${_pendingImportDisplayKey} with the matching capo position already shown.`, 'mdi:guitar-pick');
+    if (parsed.displayKey) {
+      showAlert('Capo Detected', `This source recommends Key: ${parsed.displayKey} using a capo. Chord shapes were imported as written (Key: ${parsed.key}) — the Capo field has been pre-set to match. Adjust it before saving if needed.`, 'mdi:guitar-pick');
     }
   } catch (err) {
     console.error('Link import error:', err);
@@ -4437,6 +4476,7 @@ async function saveSong() {
   const title = document.getElementById('new-song-title').value.trim();
   const artist = document.getElementById('new-song-artist').value.trim();
   const key = document.getElementById('new-song-key').value;
+  const capoFret = parseInt(document.getElementById('new-song-capo')?.value || '0', 10) || 0;
   if (!title) { showAlert('Missing Info', 'Please enter a song title.', 'mdi:alert-circle'); return; }
   const modal = document.getElementById('create-song-modal');
   const editId = modal?.dataset?.editId || '';
@@ -4444,25 +4484,49 @@ async function saveSong() {
   const content = editId
     ? (document.getElementById('edit-song-content-mirror')?.value || document.getElementById('new-song-content').value)
     : document.getElementById('new-song-content').value;
+  // A capo > 0 means the chord shapes (key) sound higher than written — the
+  // recommended/performance key is the shapes transposed up by the capo fret.
+  const recommendedKey = capoFret > 0 ? transposeNote(key, capoFret) : '';
+
   if (!await ensureServiceAuth()) return;
+
+  const saveBtn = document.getElementById('save-song-btn');
+  const saveBtnLabel = document.getElementById('save-song-btn-label');
+  const saveBtnSpinner = document.getElementById('save-song-btn-spinner');
+  if (saveBtn) saveBtn.disabled = true;
+  if (saveBtnSpinner) saveBtnSpinner.style.display = 'inline-block';
+  if (saveBtnLabel) saveBtnLabel.textContent = editId ? 'Saving…' : 'Creating…';
+
   try {
     if (editId) {
-      await db.collection('songs').doc(editId).update({ title, artist, content, key });
+      const updateData = { title, artist, content, key, recommendedKey: recommendedKey || firebase.firestore.FieldValue.delete() };
+      await db.collection('songs').doc(editId).update(updateData);
       const idx = allSongs.findIndex(s => s.id === editId);
-      if (idx !== -1) Object.assign(allSongs[idx], { title, artist, content, key });
+      if (idx !== -1) Object.assign(allSongs[idx], { title, artist, content, key, recommendedKey: recommendedKey || undefined });
       renderSongsList();
+      closeCreateSongModal();
     } else {
       const newSongData = {
         title, artist, content, key,
         createdBy: 'service',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (_pendingImportDisplayKey) newSongData.recommendedKey = _pendingImportDisplayKey;
-      await db.collection('songs').add(newSongData);
+      if (recommendedKey) newSongData.recommendedKey = recommendedKey;
+      const ref = await db.collection('songs').add(newSongData);
+      // Optimistically add locally so it opens instantly, without waiting on the live listener
+      const localSong = { id: ref.id, ...newSongData, createdAt: { toDate: () => new Date() } };
+      if (!allSongs.find(s => s.id === ref.id)) allSongs.push(localSong);
+      closeCreateSongModal();
+      openSongSheet(ref.id, false);
     }
-    _pendingImportDisplayKey = '';
-    closeCreateSongModal();
-  } catch(e) { console.error(e); showAlert('Error', 'Failed to save song: ' + (e.code || e.message), 'mdi:alert-circle'); }
+  } catch(e) {
+    console.error(e);
+    showAlert('Error', 'Failed to save song: ' + (e.code || e.message), 'mdi:alert-circle');
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+    if (saveBtnSpinner) saveBtnSpinner.style.display = 'none';
+    if (saveBtnLabel) saveBtnLabel.textContent = 'Save Song';
+  }
 }
 
 // ============================================================
@@ -4765,6 +4829,13 @@ async function saveSetlist() {
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
+  const csBtn = document.getElementById('create-setlist-btn');
+  const csSpinner = document.getElementById('create-setlist-btn-spinner');
+  const csLabel = document.getElementById('create-setlist-btn-label');
+  if (csBtn) csBtn.disabled = true;
+  if (csSpinner) csSpinner.style.display = 'inline-block';
+  if (csLabel) csLabel.textContent = 'Creating…';
+
   try {
     const docRef = await db.collection('setlists').add(data);
     closeCreateSetlistModal();
@@ -4772,7 +4843,14 @@ async function saveSetlist() {
     const newSetlist = { id: docRef.id, ...data, songs: [] };
     allSetlists.unshift(newSetlist);
     openSetlistDetail(docRef.id);
-  } catch(e) { console.error(e); showAlert('Error', 'Failed to create setlist.', 'mdi:alert-circle'); }
+  } catch(e) {
+    console.error(e);
+    showAlert('Error', 'Failed to create setlist.', 'mdi:alert-circle');
+  } finally {
+    if (csBtn) csBtn.disabled = false;
+    if (csSpinner) csSpinner.style.display = 'none';
+    if (csLabel) csLabel.textContent = 'Create Setlist';
+  }
 }
 
 // ============================================================
