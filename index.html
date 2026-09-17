@@ -2605,9 +2605,15 @@ function positionFloatingMenuNear(menuId, triggerId, otherMenuIds) {
   if (isOpen) { menu.style.display = 'none'; return; }
   const r = trigger.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return;
+  const menuWidth = parseInt(getComputedStyle(menu).minWidth) || 220;
+  // Anchor to the button's own left edge; only shift left if that would
+  // actually push the menu past the right edge of the screen.
+  let left = r.left;
+  if (left + menuWidth > window.innerWidth - 8) left = window.innerWidth - menuWidth - 8;
+  left = Math.max(8, left);
   menu.style.position = 'fixed';
   menu.style.top = (r.bottom + 6) + 'px';
-  menu.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 228)) + 'px';
+  menu.style.left = left + 'px';
   menu.style.right = 'auto';
   menu.style.display = menu.dataset.grid === '1' ? 'grid' : 'block';
 }
@@ -3323,7 +3329,7 @@ function updateCapoDisplay() {
 // ============================================================
 function openKeyModal() {
   const container = document.getElementById('key-grid-container');
-  container.innerHTML = CHROMATIC_SCALE.map(k => `
+  container.innerHTML = KEY_OPTIONS.map(k => `
     <button class="key-btn ${k === localKey ? 'active' : ''}" onclick="selectKey('${k}')">${k}</button>
   `).join('');
   const _km = document.getElementById('key-modal');
