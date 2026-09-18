@@ -3309,20 +3309,20 @@ function transposeChordLine(line, fromKey, toKey) {
   }).join('');
 }
 
-function getCapoSuggestion(fromKey, toKey) {
-  const fromIdx = getNoteIndex(fromKey);
-  const toIdx = getNoteIndex(toKey);
-  let diff = toIdx - fromIdx;
-  if (diff < 0) diff += 12;
-  if (diff === 0) return 0;
-  return (12 - diff) % 12;
-}
-
 function updateCapoDisplay() {
   if (!originalKey || !localKey) return;
-  const transposeDelta = getCapoSuggestion(localKey, originalKey);
-  const baseCapo = currentSongBaseCapo || 0;
-  const capo = (baseCapo + transposeDelta) % 12;
+  // The song's real sounding pitch is the original (as-written) key raised by
+  // whatever capo it was recorded/written with.
+  const soundingKey = currentSongBaseCapo > 0 ? transposeNote(originalKey, currentSongBaseCapo) : originalKey;
+  const fromIdx = getNoteIndex(soundingKey);
+  const toIdx = getNoteIndex(localKey);
+  let capo = 0;
+  if (fromIdx !== -1 && toIdx !== -1) {
+    // Chords displayed are already rewritten to `localKey` (see renderSheetContent) —
+    // so the capo needed is just how far that displayed key sits below the
+    // song's real sounding pitch.
+    capo = (fromIdx - toIdx + 12) % 12;
+  }
   const capoEl = document.getElementById('capo-value');
   if (capoEl) capoEl.textContent = capo === 0 ? 'Open' : capo;
 }
