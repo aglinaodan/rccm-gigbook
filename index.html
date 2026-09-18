@@ -3277,21 +3277,27 @@ function getNoteIndex(note) {
   return CHROMATIC_SCALE.indexOf(normalized);
 }
 
-function transposeNote(note, semitones) {
+const CHROMATIC_SCALE_FLATS = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+function keyPrefersFlats(key) {
+  return typeof key === 'string' && key.length > 1 && key[1] === 'b';
+}
+
+function transposeNote(note, semitones, preferFlats) {
   const normalized = normalizeNote(note);
   const idx = CHROMATIC_SCALE.indexOf(normalized);
   if (idx === -1) return note;
-  return CHROMATIC_SCALE[(idx + semitones + 12) % 12];
+  const newIdx = (idx + semitones + 12) % 12;
+  return preferFlats ? CHROMATIC_SCALE_FLATS[newIdx] : CHROMATIC_SCALE[newIdx];
 }
 
-function transposeChord(chord, semitones) {
+function transposeChord(chord, semitones, preferFlats) {
   if (semitones === 0) return chord;
   const chordRegex = /^([A-G][#b]?)(.*?)(\/([A-G][#b]?))?$/;
   const match = chord.match(chordRegex);
   if (!match) return chord;
-  const root = transposeNote(match[1], semitones);
+  const root = transposeNote(match[1], semitones, preferFlats);
   const quality = match[2] || '';
-  const bass = match[4] ? '/' + transposeNote(match[4], semitones) : '';
+  const bass = match[4] ? '/' + transposeNote(match[4], semitones, preferFlats) : '';
   return root + quality + bass;
 }
 
@@ -3301,10 +3307,11 @@ function transposeChordLine(line, fromKey, toKey) {
   let semitones = toIdx - fromIdx;
   if (semitones < 0) semitones += 12;
   if (semitones === 0) return escHtml(line);
+  const preferFlats = keyPrefersFlats(toKey);
   const tokens = line.split(/( +)/);
   return tokens.map(token => {
     if (/^ +$/.test(token)) return token;
-    if (CHORD_TOKEN.test(token.trim())) return escHtml(transposeChord(token.trim(), semitones));
+    if (CHORD_TOKEN.test(token.trim())) return escHtml(transposeChord(token.trim(), semitones, preferFlats));
     return escHtml(token);
   }).join('');
 }
