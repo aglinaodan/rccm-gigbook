@@ -1855,6 +1855,7 @@ let currentSongId = null;
 let currentSetlistId = null;
 let localKey = null;
 let originalKey = null;
+let currentSongBaseCapo = 0; // literal capo value stored on the song, independent of Key
 let lyricsOnlyMode = false;
 let autoScrollInterval = null;
 let autoScrollSpeed = 0;
@@ -3005,12 +3006,12 @@ function openSongSheet(songId, fromSetlist) {
   currentSongId = songId;
   openedFromSetlist = !!fromSetlist;
   originalKey = song.key || 'C';
+  currentSongBaseCapo = song.capo || 0;
   // Determine which key to use:
   // 1. If opened from a setlist and there's a setlist-specific override → use that
   // 2. Else if the song is a favourite and the user saved a custom key → use that
-  // 3. Else if the import detected a capo'd/sounding key distinct from the chord shapes → use that
-  // 4. Otherwise always use the song's original (chord-shape) key
-  localKey = song.recommendedKey || originalKey;
+  // 3. Otherwise always use the song's original key exactly as stored
+  localKey = originalKey;
   if (fromSetlist && currentSetlistId && currentUser) {
     try {
       const setlistKey = localStorage.getItem(`rccm_setlistkey_${'service'}_${currentSetlistId}_${songId}`);
@@ -3319,7 +3320,9 @@ function getCapoSuggestion(fromKey, toKey) {
 
 function updateCapoDisplay() {
   if (!originalKey || !localKey) return;
-  const capo = getCapoSuggestion(localKey, originalKey);
+  const transposeDelta = getCapoSuggestion(localKey, originalKey);
+  const baseCapo = currentSongBaseCapo || 0;
+  const capo = (baseCapo + transposeDelta) % 12;
   const capoEl = document.getElementById('capo-value');
   if (capoEl) capoEl.textContent = capo === 0 ? 'Open' : capo;
 }
@@ -4116,15 +4119,7 @@ function openEditSongModal(songId) {
   const mirrorEl = document.getElementById('edit-song-content-mirror');
   if (mirrorEl) mirrorEl.value = song.content || '';
   selectSongKey(song.key || 'C');
-  let editFret = 0;
-  if (song.recommendedKey && song.key) {
-    const fromIdx = getNoteIndex(song.key), toIdx = getNoteIndex(song.recommendedKey);
-    if (fromIdx !== -1 && toIdx !== -1) {
-      editFret = toIdx - fromIdx;
-      if (editFret < 0) editFret += 12;
-    }
-  }
-  selectSongCapo(editFret);
+  selectSongCapo(song.capo || 0);
   const modal = document.getElementById('create-song-modal');
   modal.dataset.editId = songId;
   // Hide intake switcher + all intake content areas
@@ -4187,29 +4182,32 @@ function _parseUltimateGuitar(html) {
     store = JSON.parse(_decodeHtmlEntities(storeMatch[1]));
   } catch (e) { return null; }
 
-  // Recursively find the tab meta object and the raw chord-sheet content, since exact
-  // nesting varies a bit by page type (chords / official / pro / ukulele)
-  let meta = null, content = null;
-  (function walk(node) {
-    if (!node || typeof node !== 'object') return;
-    if (!meta && typeof node.song_name === 'string' && typeof node.artist_name === 'string') meta = node;
-    if (!content) {
-      if (typeof node.content === 'string' && /\[ch\]|\[tab\]/.test(node.content)) content = node.content;
-      else if (node.wiki_tab && typeof node.wiki_tab.content === 'string') content = node.wiki_tab.content;
-    }
-    for (const k in node) { if (!meta || !content) walk(node[k]); }
-  })(store);
+  // Prefer the known, exact path first — a generic recursive walk risks latching
+  // onto a DIFFERENT song's metadata (e.g. a "related songs" list also has
+  // song_name/artist_name on every entry), silently grabbing the wrong key/capo.
+  let meta = store?.page?.data?.tab && typeof store.page.data.tab.song_name === 'string' ? store.page.data.tab : null;
+  let content = store?.page?.data?.tab_view?.wiki_tab?.content;
+  if (typeof content !== 'string') content = null;
+
+  if (!meta || !content) {
+    (function walk(node) {
+      if (!node || typeof node !== 'object') return;
+      if (!meta && typeof node.song_name === 'string' && typeof node.artist_name === 'string') meta = node;
+      if (!content) {
+        if (typeof node.content === 'string' && /\[ch\]|\[tab\]/.test(node.content)) content = node.content;
+        else if (node.wiki_tab && typeof node.wiki_tab.content === 'string') content = node.wiki_tab.content;
+      }
+      for (const k in node) { if (!meta || !content) walk(node[k]); }
+    })(store);
+  }
 
   if (!meta && !content) return null;
   const plainContent = content ? content.replace(/\[ch\]/g, '').replace(/\[\/ch\]/g, '').replace(/\[tab\]/g, '').replace(/\[\/tab\]/g, '') : '';
-  const soundingKey = meta?.tonality_name || meta?.tonality || '';
-  const capoFret = Number(meta?.capo) || 0;
-  const shapeKey = (capoFret > 0 && soundingKey) ? transposeNote(soundingKey, -capoFret) : soundingKey;
   return {
     title: meta?.song_name || '',
     artist: meta?.artist_name || '',
-    key: shapeKey,
-    displayKey: capoFret > 0 ? soundingKey : '',
+    key: meta?.tonality_name || meta?.tonality || '',
+    capo: Number(meta?.capo) || 0,
     content: plainContent
   };
 }
@@ -4230,7 +4228,7 @@ function _parseGeneric(html, url) {
 
   const bodyText = doc.body ? doc.body.textContent : '';
   const keyMatch = bodyText.match(/\bkey[:\s]+([A-G][#b]?)\b/i);
-  const soundingKey = keyMatch ? keyMatch[1] : '';
+  const key = keyMatch ? keyMatch[1] : '';
   // Capo mentions: "Capo: 1st fret", "Capo 3", "capo: 2", "no capo" (= 0)
   let capoFret = 0;
   if (/\bno\s+capo\b/i.test(bodyText)) capoFret = 0;
@@ -4238,8 +4236,6 @@ function _parseGeneric(html, url) {
     const capoMatch = bodyText.match(/\bcapo[:\s]*(?:on\s*)?(?:fret\s*)?#?\s*(\d{1,2})/i);
     if (capoMatch) capoFret = parseInt(capoMatch[1], 10) || 0;
   }
-  const shapeKey = (capoFret > 0 && soundingKey) ? transposeNote(soundingKey, -capoFret) : soundingKey;
-  const key = shapeKey;
 
   // Prefer the longest <pre> block (most chord/tab sites render the sheet in <pre>)
   const pres = Array.from(doc.querySelectorAll('pre'));
@@ -4251,7 +4247,7 @@ function _parseGeneric(html, url) {
     doc.querySelectorAll('script,style,nav,header,footer').forEach(el => el.remove());
     content = (doc.body?.textContent || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 4000);
   }
-  return { title, artist, key, displayKey: capoFret > 0 ? soundingKey : '', content: content.trim() };
+  return { title, artist, key, capo: capoFret, content: content.trim() };
 }
 
 // Gigbook's own Cloudflare Worker endpoint (see /worker/gigbook-proxy-worker.js
@@ -4342,23 +4338,14 @@ async function handleLinkImport() {
       const match = KEY_OPTIONS.find(k => k.toUpperCase() === String(parsed.key).trim().toUpperCase());
       if (match) selectSongKey(match);
     }
-    // If the source stated a capo'd/sounding key distinct from the chord-shape key,
-    // pre-select the matching Capo fret so it's reflected immediately.
-    if (parsed.displayKey && parsed.key) {
-      const fromIdx = getNoteIndex(parsed.key), toIdx = getNoteIndex(parsed.displayKey);
-      if (fromIdx !== -1 && toIdx !== -1) {
-        let fret = toIdx - fromIdx;
-        if (fret < 0) fret += 12;
-        if (fret > 0) selectSongCapo(fret);
-      }
-    }
+    if (parsed.capo) selectSongCapo(parsed.capo);
 
     // Switch to text mode and populate the chord sheet content
     setIntakeMode('text');
     document.getElementById('new-song-content').value = parsed.content || '';
     _updateSaveSongBtn();
-    if (parsed.displayKey) {
-      showAlert('Capo Detected', `This source recommends Key: ${parsed.displayKey} using a capo. Chord shapes were imported as written (Key: ${parsed.key}) — the Capo field has been pre-set to match. Adjust it before saving if needed.`, 'mdi:guitar-pick');
+    if (parsed.capo) {
+      showAlert('Capo Detected', `This source lists a capo on fret ${parsed.capo}. Key and Capo have been pre-filled to match — adjust either before saving if needed.`, 'mdi:guitar-pick');
     }
   } catch (err) {
     console.error('Link import error:', err);
@@ -4568,9 +4555,6 @@ async function saveSong() {
   const content = editId
     ? (document.getElementById('edit-song-content-mirror')?.value || document.getElementById('new-song-content').value)
     : document.getElementById('new-song-content').value;
-  // A capo > 0 means the chord shapes (key) sound higher than written — the
-  // recommended/performance key is the shapes transposed up by the capo fret.
-  const recommendedKey = capoFret > 0 ? transposeNote(key, capoFret) : '';
 
   if (!await ensureServiceAuth()) return;
 
@@ -4583,10 +4567,10 @@ async function saveSong() {
 
   try {
     if (editId) {
-      const updateData = { title, artist, content, key, recommendedKey: recommendedKey || firebase.firestore.FieldValue.delete() };
+      const updateData = { title, artist, content, key, capo: capoFret || firebase.firestore.FieldValue.delete() };
       await db.collection('songs').doc(editId).update(updateData);
       const idx = allSongs.findIndex(s => s.id === editId);
-      if (idx !== -1) Object.assign(allSongs[idx], { title, artist, content, key, recommendedKey: recommendedKey || undefined });
+      if (idx !== -1) Object.assign(allSongs[idx], { title, artist, content, key, capo: capoFret || undefined });
       renderSongsList();
       closeCreateSongModal();
     } else {
@@ -4595,7 +4579,7 @@ async function saveSong() {
         createdBy: 'service',
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       };
-      if (recommendedKey) newSongData.recommendedKey = recommendedKey;
+      if (capoFret) newSongData.capo = capoFret;
       const ref = await db.collection('songs').add(newSongData);
       // Optimistically add locally so it opens instantly, without waiting on the live listener
       const localSong = { id: ref.id, ...newSongData, createdAt: { toDate: () => new Date() } };
