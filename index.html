@@ -330,61 +330,92 @@
       }
     }
 
-    /* Desktop (> 1278px): cap the app at 1278px and center it with black side margins */
+    /* ══════════════════════════════════════════════════════════════
+       DESKTOP (≥1279px): real desktop layout, not a stretched phone.
+       - Left sidebar nav (was the bottom tab bar)
+       - Content column capped at a comfortable reading width, centered
+         in the remaining space — not stretched edge-to-edge on wide monitors
+       - Slightly larger base type since desktop is viewed from farther away
+       ══════════════════════════════════════════════════════════════ */
     @media (min-width: 1279px) {
-      html, body {
-        background: #000 !important;
-        overflow: hidden;
+      :root {
+        --sidebar-w: 232px;
+        --content-max-w: 900px;
+        --sheet-font-size: 17px;
+        --nav-font-size: 14px;
+        --btn-font-size: 14px;
+        --meta-font-size: 15px;
       }
-      /* App container: centered, max 1278px, full viewport height as a flex column */
+      html, body { background: var(--canvas-bg) !important; }
       #app-root {
-        max-width: 1278px;
-        margin: 0 auto;
-        position: relative;
         height: 100vh;
         display: flex !important;
-        flex-direction: column;
-        box-shadow: 0 0 60px rgba(0,0,0,0.7);
-        border-left: 1px solid var(--border-color);
-        border-right: 1px solid var(--border-color);
+        flex-direction: row !important;
         overflow: hidden;
       }
-      /* Switch navbars from viewport-fixed to sticky/static within the app container
-         so they always bound the scrollable area — no content ever hides under them */
-      #top-nav {
-        position: sticky !important;
-        top: 0 !important;
-        left: auto !important;
-        right: auto !important;
-        width: 100% !important;
-        transform: none !important;
-        flex-shrink: 0;
-        z-index: 400;
-      }
+
+      /* ── Sidebar (was bottom-nav) ── */
       #bottom-nav {
-        position: sticky !important;
-        bottom: 0 !important;
-        left: auto !important;
-        right: auto !important;
-        width: 100% !important;
-        transform: none !important;
-        flex-shrink: 0;
-        z-index: 400;
-        margin-top: auto;
+        position: fixed !important;
+        top: 0 !important; left: 0 !important; bottom: 0 !important; right: auto !important;
+        width: var(--sidebar-w) !important;
+        height: 100vh !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 2px;
+        padding: 20px 12px !important;
+        border-top: none !important;
+        border-right: 1px solid var(--border-color);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
-      /* Main content fills the remaining space between the two navbars */
+      .bnav-btn {
+        flex: none !important;
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        gap: 14px;
+        padding: 12px 16px !important;
+        border-radius: 12px;
+      }
+      .bnav-icon { font-size: 21px; }
+      .bnav-label { font-size: 14.5px; font-weight: 600; }
+      .bnav-btn.active { color: var(--accent-soft); background: var(--surface-2); }
+      .bnav-btn:not(.active):hover { background: var(--surface-1); color: var(--text-secondary); }
+
+      /* ── Main content: fills remaining width, no reserved bottom-nav clearance ── */
       #main-content {
+        margin-left: var(--sidebar-w) !important;
         flex: 1 !important;
-        height: 0 !important;
-        padding-top: 16px !important;
-        padding-bottom: 16px !important;
+        height: 100vh !important;
+        padding-top: 24px !important;
+        padding-bottom: 24px !important;
         overflow-y: auto !important;
       }
-      #main-content::-webkit-scrollbar-track {
-        margin-top: 0;
-        margin-bottom: 0;
+      #main-content::-webkit-scrollbar-track { margin-top: 0; margin-bottom: 0; }
+
+      /* ── Center every tab panel's content in a readable column instead of
+         stretching chord sheets and lists edge-to-edge on a wide monitor ── */
+      #tab-songs, #tab-setlists, #tab-admin {
+        max-width: var(--content-max-w);
+        margin-left: auto;
+        margin-right: auto;
       }
-      /* FABs position is handled globally in base CSS — no override needed here */
+
+      /* ── Floating header row / back button / song topbar: clear the sidebar.
+         header-actions itself is positioned by JS (syncHeaderActionsToList),
+         which measures the now-centered tab panel directly, so it already
+         lines up correctly — only the sidebar-adjacent fixed elements need
+         an explicit offset here. ── */
+      /* home-btn and song-sheet-topbar's left edge is kept in sync with the
+         actual content column by syncHeaderActionsToList() (JS) — no CSS
+         override needed or wanted here, since that would just fight the JS. */
+
+      /* FABs: no bottom-nav to clear anymore, sit closer to the true corner */
+      .fab, #add-song-fab, #autoscroll-fab {
+        bottom: 28px !important;
+      }
+      #autoscroll-reshow-btn { bottom: 84px !important; }
     }
     .checkbox-custom { width: 18px; height: 18px; border-radius: 4px; border:2px solid var(--border-subtle); appearance: none; -webkit-appearance: none; cursor: pointer; background: transparent; transition: all 0.2s; flex-shrink: 0; }
     .checkbox-custom:checked { background: var(--accent); border-color: var(--accent); background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z'/%3E%3C/svg%3E"); background-size: 12px; background-position: center; background-repeat: no-repeat; }
@@ -2353,6 +2384,13 @@ function syncHeaderActionsToList() {
   const backBtnVisible = document.getElementById('home-btn')?.style.display !== 'none';
   actions.style.left = backBtnVisible ? `calc(${contentLeft}px + 46px + 8px)` : `${contentLeft}px`;
   actions.style.right = `${contentRight}px`;
+  // Pin the back button and song topbar to the same measured left edge, so they
+  // can't drift from the content column regardless of sidebar width, centering,
+  // or viewport size — this is what actually keeps desktop aligned correctly.
+  const homeBtn = document.getElementById('home-btn');
+  if (homeBtn) homeBtn.style.left = `${contentLeft}px`;
+  const topbar = document.getElementById('song-sheet-topbar');
+  if (topbar) topbar.style.left = `${contentLeft}px`;
 }
 window.addEventListener('resize', syncHeaderActionsToList);
 window.addEventListener('orientationchange', () => setTimeout(syncHeaderActionsToList, 100));
@@ -4366,6 +4404,89 @@ async function handleLinkImport() {
   }
 }
 
+// Find a vertical gutter (a wide unused horizontal band) near the middle of
+// the page — the signature of a two-column layout. Returns null for a
+// single-column page.
+function _detectColumnGutter(items, pageWidth) {
+  const bucketSize = 5;
+  const numBuckets = Math.ceil(pageWidth / bucketSize);
+  const covered = new Array(numBuckets).fill(false);
+  for (const it of items) {
+    const fontSize = Math.abs(it.transform[3]) || 10;
+    const x0 = it.transform[4];
+    const w = it.width || (it.str.length * fontSize * 0.52);
+    const b0 = Math.max(0, Math.floor(x0 / bucketSize));
+    const b1 = Math.min(numBuckets - 1, Math.ceil((x0 + w) / bucketSize));
+    for (let b = b0; b <= b1; b++) covered[b] = true;
+  }
+  // Only look for the gutter within the central band of the page — a gap near
+  // either edge is just a margin, not a column break.
+  const loBound = Math.floor(numBuckets * 0.25);
+  const hiBound = Math.ceil(numBuckets * 0.75);
+  let bestStart = -1, bestLen = 0, curStart = -1, curLen = 0;
+  for (let b = loBound; b <= hiBound; b++) {
+    if (!covered[b]) {
+      if (curStart === -1) curStart = b;
+      curLen++;
+      if (curLen > bestLen) { bestLen = curLen; bestStart = curStart; }
+    } else { curStart = -1; curLen = 0; }
+  }
+  const minGapPt = 18; // require a real gutter, not just incidental whitespace
+  if (bestStart === -1 || bestLen * bucketSize < minGapPt) return null;
+  const gutterStart = bestStart * bucketSize, gutterEnd = (bestStart + bestLen) * bucketSize;
+  // Require real content on BOTH sides — otherwise this is just trailing
+  // whitespace after short single-column lines, not an actual second column.
+  const leftCount = items.filter(it => it.transform[4] < gutterStart).length;
+  const rightCount = items.filter(it => it.transform[4] >= gutterEnd).length;
+  const minSide = Math.max(3, items.length * 0.15);
+  if (leftCount < minSide || rightCount < minSide) return null;
+  return { gutterStart, gutterEnd };
+}
+
+// Convert one column's worth of text items into plain monospace lines,
+// preserving chord-over-lyric horizontal alignment relative to that
+// column's own left margin (so a right column doesn't inherit a huge
+// block of leading whitespace from its position on the page).
+function _itemsToLines(items) {
+  if (!items.length) return [];
+  const rawYs = [...new Set(items.map(it => it.transform[5]))].sort((a, b) => b - a);
+  const yToKey = new Map();
+  let lastKey = null;
+  for (const y of rawYs) {
+    if (lastKey === null || Math.abs(lastKey - y) > 2.5) lastKey = y;
+    yToKey.set(y, lastKey);
+  }
+  const lineMap = new Map();
+  for (const item of items) {
+    const y = yToKey.get(item.transform[5]);
+    if (!lineMap.has(y)) lineMap.set(y, []);
+    lineMap.get(y).push(item);
+  }
+  const sortedYs = [...lineMap.keys()].sort((a, b) => b - a);
+
+  const fontSizes = items.map(it => Math.abs(it.transform[3]) || 10).filter(Boolean);
+  const avgFontSize = fontSizes.length ? fontSizes.reduce((a,b) => a+b, 0) / fontSizes.length : 10;
+  const charWidth = Math.max(3, avgFontSize * 0.52);
+  const leftMargin = Math.min(...items.map(it => it.transform[4]));
+
+  return sortedYs.map(y => {
+    const lineItems = lineMap.get(y).slice().sort((a, b) => a.transform[4] - b.transform[4]);
+    let line = '';
+    let cursorCol = 0;
+    for (const it of lineItems) {
+      const x = it.transform[4] - leftMargin;
+      const targetCol = Math.round(x / charWidth);
+      if (targetCol > cursorCol) {
+        line += ' '.repeat(targetCol - cursorCol);
+        cursorCol = targetCol;
+      }
+      line += it.str;
+      cursorCol += it.str.length;
+    }
+    return line.replace(/ {40,}/g, ' '.repeat(40)).replace(/[ \t]+$/, '');
+  });
+}
+
 async function _readPdfAsText(file) {
   const pdfjsLib = window['pdfjs-dist/build/pdf'] || window.pdfjsLib;
   if (!pdfjsLib) throw new Error('PDF.js not loaded');
@@ -4381,56 +4502,19 @@ async function _readPdfAsText(file) {
     const items   = content.items;
     if (!items.length) continue;
 
-    // Group items into lines by Y coordinate (PDF Y is bottom-up, so we sort descending = top first).
-    // Nearby Y values (within ~2.5pt) are snapped together first, since chord and
-    // lyric text runs on the same visual row can have tiny baseline differences
-    // that would otherwise split one row into two output lines.
-    const rawYs = [...new Set(items.map(it => it.transform[5]))].sort((a, b) => b - a);
-    const yToKey = new Map();
-    let lastKey = null;
-    for (const y of rawYs) {
-      if (lastKey === null || Math.abs(lastKey - y) > 2.5) lastKey = y;
-      yToKey.set(y, lastKey);
-    }
-    const lineMap = new Map();
-    for (const item of items) {
-      const y = yToKey.get(item.transform[5]);
-      if (!lineMap.has(y)) lineMap.set(y, []);
-      lineMap.get(y).push(item);
-    }
-    // Sort Y values descending (largest Y = top of page)
-    const sortedYs = [...lineMap.keys()].sort((a, b) => b - a);
+    const viewport = page.getViewport({ scale: 1 });
+    const gutter = _detectColumnGutter(items, viewport.width);
 
-    // Estimate a monospace "character width" for this page from the most common
-    // font size, so X-coordinates can be converted into a column position —
-    // this is what lets a chord positioned above a specific lyric stay aligned
-    // with that same lyric once converted to plain monospace text.
-    const fontSizes = items.map(it => Math.abs(it.transform[3]) || 10).filter(Boolean);
-    const avgFontSize = fontSizes.length ? fontSizes.reduce((a,b) => a+b, 0) / fontSizes.length : 10;
-    const charWidth = Math.max(3, avgFontSize * 0.52); // rough average glyph width for typical fonts
-
-    const lines = sortedYs.map(y => {
-      // Sort the items on this line left-to-right by X position
-      const lineItems = lineMap.get(y).slice().sort((a, b) => a.transform[4] - b.transform[4]);
-      let line = '';
-      let cursorCol = 0;
-      for (const it of lineItems) {
-        const x = it.transform[4];
-        const targetCol = Math.round(x / charWidth);
-        // Pad with spaces to reach this item's horizontal position, but never
-        // remove characters already placed (avoids overlap from rounding).
-        if (targetCol > cursorCol) {
-          line += ' '.repeat(targetCol - cursorCol);
-          cursorCol = targetCol;
-        }
-        line += it.str;
-        cursorCol += it.str.length;
-      }
-      // Collapse only truly excessive runs (40+ spaces, suggesting estimation
-      // error) while still preserving legitimate wide chord-over-lyric gaps.
-      return line.replace(/ {40,}/g, ' '.repeat(40)).replace(/[ \t]+$/, '');
-    });
-    pages.push(lines.join('\n'));
+    let pageLines;
+    if (gutter) {
+      // Two columns: read the left column fully (top to bottom), then the right.
+      const leftItems  = items.filter(it => it.transform[4] < gutter.gutterStart);
+      const rightItems = items.filter(it => it.transform[4] >= gutter.gutterEnd);
+      pageLines = [..._itemsToLines(leftItems), '', ..._itemsToLines(rightItems)];
+    } else {
+      pageLines = _itemsToLines(items);
+    }
+    pages.push(pageLines.join('\n'));
   }
   return pages.join('\n\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\x00/g, '');
 }
