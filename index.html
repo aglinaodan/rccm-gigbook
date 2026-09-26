@@ -823,7 +823,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
   <!-- Song header strip — title+artist beside the back button, always visible while a song is open.
        Background fades in on scroll so lyrics don't show through underneath it. -->
   <div id="song-sheet-topbar" style="display:none;position:fixed;top:0;left:0;right:0;height:calc(68px + env(safe-area-inset-top,0px));z-index:497;pointer-events:none;transition:background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;border-bottom:1px solid transparent;">
-    <div style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));height:46px;left:calc(var(--view-px) + 46px + 8px);right:calc(var(--view-px) + 46px + 8px);display:flex;flex-direction:column;justify-content:center;min-width:0;">
+    <div style="position:absolute;top:calc(14px + env(safe-area-inset-top,0px));height:46px;left:calc(46px + 8px);right:calc(var(--view-px) + 46px + 8px);display:flex;flex-direction:column;justify-content:center;min-width:0;">
       <div id="sheet-collapsed-title-text" style="color:var(--lyrics-color);font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
       <div id="sheet-collapsed-artist-text" style="color:var(--text-secondary);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
     </div>
@@ -4812,7 +4812,7 @@ function renderSetlistDetail(setlist) {
   const detail = document.getElementById('setlist-detail-view');
   const songs = currentSetlistSongs.map(sid => allSongs.find(s => s.id === sid)).filter(Boolean);
   detail.innerHTML = `
-    <div style="margin-bottom:12px;">
+    <div style="margin-bottom:12px;padding-left:calc(46px + 8px);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div>
           <h2 style="color:var(--lyrics-color);font-size:16px;font-weight:700;margin:0;">${escHtml(setlist.name)}</h2>
