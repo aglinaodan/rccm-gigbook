@@ -72,6 +72,8 @@
     #app-root { background: var(--canvas-bg); height: 100vh; overflow: hidden; }
     .song-sheet-content { font-size: var(--sheet-font-size); }
     .chord-line { color: var(--chords-color); white-space: pre-wrap; font-family: 'Roboto Mono', monospace; font-weight: 600; }
+    .chord-token { cursor: pointer; border-radius: 3px; }
+    .chord-token:active { background: var(--accent-glow); }
     .lyric-line { color: var(--lyrics-color); white-space: pre-wrap; }
     .section-header { color: var(--accent-soft); font-weight: 700; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.75em; }
     .nav-text { font-size: var(--nav-font-size); }
@@ -1601,6 +1603,19 @@ button:active::after { background: rgba(255,255,255,0.12); }
   </div>
 </div>
 
+<!-- CHORD DIAGRAM MODAL -->
+<div id="chord-diagram-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-sheet" style="min-height:0;max-width:320px;text-align:center;">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <h3 id="chord-diagram-title" style="color:var(--lyrics-color);font-size:20px;font-weight:800;margin:0;">C</h3>
+      <button onclick="closeChordDiagramModal()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;padding:4px;">✕</button>
+    </div>
+    <div id="chord-diagram-svg" style="display:flex;justify-content:center;margin:8px 0;"></div>
+    <p id="chord-diagram-note" style="display:none;color:var(--text-secondary);font-size:12px;margin:6px 0 4px;line-height:1.5;"></p>
+  </div>
+</div>
+
 <!-- KEY SELECTION MODAL -->
 <div id="key-modal" class="modal-overlay" style="display:none;">
   <div class="modal-sheet key-modal">
@@ -1960,6 +1975,7 @@ function handleBackButton() {
     if (_isVisible('create-song-modal')) { closeCreateSongModal(); return; }
     if (_isVisible('create-setlist-modal')) { closeCreateSetlistModal(); return; }
     if (_isVisible('key-modal')) { closeKeyModal(); return; }
+    if (_isVisible('chord-diagram-modal')) { closeChordDiagramModal(); return; }
     if (_isVisible('user-edit-modal')) { closeUserEditModal(); return; }
     if (_isVisible('name-edit-modal')) { closeNameEditModal(); return; }
     if (_isVisible('song-selector-modal')) { closeSongSelectorModal(); return; }
@@ -3344,14 +3360,182 @@ function transposeChordLine(line, fromKey, toKey) {
   const toIdx = getNoteIndex(toKey);
   let semitones = toIdx - fromIdx;
   if (semitones < 0) semitones += 12;
-  if (semitones === 0) return escHtml(line);
   const preferFlats = keyPrefersFlats(toKey);
   const tokens = line.split(/( +)/);
   return tokens.map(token => {
     if (/^ +$/.test(token)) return token;
-    if (CHORD_TOKEN.test(token.trim())) return escHtml(transposeChord(token.trim(), semitones, preferFlats));
-    return escHtml(token);
+    const trimmed = token.trim();
+    if (!CHORD_TOKEN.test(trimmed)) return escHtml(token);
+    const displayChord = semitones === 0 ? trimmed : transposeChord(trimmed, semitones, preferFlats);
+    const safe = escHtml(displayChord);
+    return `<span class="chord-token" onclick="showChordDiagram('${displayChord.replace(/'/g, "")}')" role="button" tabindex="0">${safe}</span>`;
   }).join('');
+}
+
+// ============================================================
+// CHORD DIAGRAMS — tap any chord to see how to play it
+// ============================================================
+// Idiomatic open-position shapes for the roots that actually have one.
+// Frets are [string6(low E), string5(A), string4(D), string3(G), string2(B), string1(high e)].
+// -1 = muted, 0 = open string.
+const OPEN_CHORD_SHAPES = {
+  'C':     [-1,3,2,0,1,0],   'Cmaj7': [-1,3,2,0,0,0], 'C7':    [-1,3,2,3,1,0],
+  'Csus2': [-1,3,0,0,1,0],   'Csus4': [-1,3,3,0,1,1],
+  'D':     [-1,-1,0,2,3,2],  'Dm':    [-1,-1,0,2,3,1], 'D7':    [-1,-1,0,2,1,2],
+  'Dmaj7': [-1,-1,0,2,2,2],  'Dm7':   [-1,-1,0,2,1,1],
+  'Dsus2': [-1,-1,0,2,3,0],  'Dsus4': [-1,-1,0,2,3,3],
+  'E':     [0,2,2,1,0,0],    'Em':    [0,2,2,0,0,0],   'E7':    [0,2,0,1,0,0],
+  'Emaj7': [0,2,1,1,0,0],    'Em7':   [0,2,0,0,0,0],   'Esus4': [0,2,2,2,0,0],
+  'G':     [3,2,0,0,0,3],    'Gmaj7': [3,2,0,0,0,2],   'G7':    [3,2,0,0,0,1],
+  'Gsus4': [3,2,0,0,1,3],
+  'A':     [-1,0,2,2,2,0],   'Am':    [-1,0,2,2,1,0],  'A7':    [-1,0,2,0,2,0],
+  'Amaj7': [-1,0,2,1,2,0],   'Am7':   [-1,0,2,0,1,0],
+  'Asus2': [-1,0,2,2,0,0],   'Asus4': [-1,0,2,2,3,0],
+};
+
+// Movable barre-shape templates (offsets from the barre fret N), used for any
+// root/quality with no idiomatic open shape — e.g. F, B, and all sharp/flat roots.
+const BARRE_SHAPES = {
+  E: { // root on the low-E string; string6 = N
+    '':     [0,2,2,1,0,0],
+    'm':    [0,2,2,0,0,0],
+    '7':    [0,2,0,1,0,0],
+    'm7':   [0,2,0,0,0,0],
+    'maj7': [0,2,1,1,0,0],
+  },
+  A: { // root on the A string; string6 muted
+    '':     [null,0,2,2,2,0],
+    'm':    [null,0,2,2,1,0],
+    '7':    [null,0,2,0,2,0],
+    'm7':   [null,0,2,0,1,0],
+    'maj7': [null,0,2,1,2,0],
+  }
+};
+
+function _normalizeChordQuality(q) {
+  if (/^(maj7|M7)/.test(q)) return 'maj7';
+  if (/^(m7|min7)/.test(q)) return 'm7';
+  if (/^(m|min)(?!aj)/.test(q)) return 'm';
+  if (/^7/.test(q)) return '7';
+  return ''; // everything else (sus, add, dim, aug, 6, 9...) approximated with the major shape
+}
+
+// Parses a chord symbol into { root, quality, bass, isApproximate }, builds a
+// fretboard diagram (frets + optional barre), preferring a real open shape
+// and falling back to a movable barre shape for anything else.
+function getChordDiagram(chordName) {
+  const parts = chordName.split('/');
+  const main = parts[0];
+  const bass = parts[1] || null;
+  const rootMatch = main.match(/^[A-G][#b]?/);
+  if (!rootMatch) return null;
+  const root = rootMatch[0];
+  const qualityRaw = main.slice(root.length);
+
+  // 1. Try an exact idiomatic open shape first (covers common sus2/sus4 too)
+  let openKey = root + qualityRaw;
+  if (/^sus$/.test(qualityRaw)) openKey = root + 'sus4'; // shorthand "Asus" means Asus4
+  let frets = OPEN_CHORD_SHAPES[openKey];
+  let isApproximate = !frets && qualityRaw && !/^(sus2|sus4|maj7|m7|min7|m|min|7)$/.test(qualityRaw);
+  if (frets) {
+    return { root, quality: qualityRaw, bass, frets: frets.slice(), baseFret: 1, barre: null, isApproximate: false };
+  }
+
+  // 2. Fall back to a movable barre shape
+  const quality = _normalizeChordQuality(qualityRaw);
+  isApproximate = quality === '' && qualityRaw !== ''; // e.g. sus/add/dim/aug shown as major-shape approximation
+  const rootIdx = getNoteIndex(root);
+  if (rootIdx === -1) return null;
+  const eFret = (rootIdx - getNoteIndex('E') + 12) % 12;
+  const aFret = (rootIdx - getNoteIndex('A') + 12) % 12;
+  const useE = eFret <= aFret;
+  const N = useE ? eFret : aFret;
+  const template = useE ? BARRE_SHAPES.E[quality] : BARRE_SHAPES.A[quality];
+  const computedFrets = template.map(off => off === null ? -1 : off + N);
+  return {
+    root, quality: qualityRaw, bass,
+    frets: computedFrets,
+    baseFret: N === 0 ? 1 : N,
+    barre: N > 0 ? { fret: N, fromString: useE ? 0 : 1, toString: 5 } : null,
+    isApproximate
+  };
+}
+
+function _renderChordDiagramSVG(diagram) {
+  const { frets, baseFret, barre } = diagram;
+  const W = 200, H = 230;
+  const marginX = 30, marginTop = 44, fretH = 32, stringGap = 28;
+  const numFrets = 4;
+  const stringX = i => marginX + i * stringGap;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;">`;
+
+  // Fret number label (for barre/moved shapes)
+  if (baseFret > 1) {
+    svg += `<text x="${marginX - 20}" y="${marginTop + fretH * 0.75}" font-size="13" fill="var(--text-secondary)" font-family="sans-serif">${baseFret}fr</text>`;
+  }
+
+  // Nut (thick line) if this is an open-position shape, else a plain top fret line
+  svg += `<line x1="${stringX(0)}" y1="${marginTop}" x2="${stringX(5)}" y2="${marginTop}" stroke="var(--lyrics-color)" stroke-width="${baseFret === 1 ? 5 : 2}" />`;
+  // Remaining fret lines
+  for (let f = 1; f <= numFrets; f++) {
+    const y = marginTop + f * fretH;
+    svg += `<line x1="${stringX(0)}" y1="${y}" x2="${stringX(5)}" y2="${y}" stroke="var(--border-color)" stroke-width="1.5" />`;
+  }
+  // Strings
+  for (let s = 0; s < 6; s++) {
+    svg += `<line x1="${stringX(s)}" y1="${marginTop}" x2="${stringX(s)}" y2="${marginTop + numFrets * fretH}" stroke="var(--border-color)" stroke-width="1.5" />`;
+  }
+  // Barre bar
+  if (barre) {
+    const rel = 1; // barre always drawn at the first fret row shown
+    const y = marginTop + (rel - 0.5) * fretH;
+    svg += `<line x1="${stringX(barre.fromString)}" y1="${y}" x2="${stringX(barre.toString)}" y2="${y}" stroke="var(--accent)" stroke-width="14" stroke-linecap="round" opacity="0.85" />`;
+  }
+  // Open/muted markers above the nut, and fretted dots
+  for (let s = 0; s < 6; s++) {
+    const fret = frets[s];
+    const x = stringX(s);
+    if (fret === -1) {
+      svg += `<text x="${x}" y="${marginTop - 14}" font-size="15" fill="var(--text-muted)" text-anchor="middle" font-family="sans-serif">✕</text>`;
+    } else if (fret === 0) {
+      svg += `<circle cx="${x}" cy="${marginTop - 16}" r="6" fill="none" stroke="var(--text-secondary)" stroke-width="1.5" />`;
+    } else if (fret > 0) {
+      const relFret = baseFret === 1 ? fret : (fret - baseFret + 1);
+      const y = marginTop + (relFret - 0.5) * fretH;
+      svg += `<circle cx="${x}" cy="${y}" r="9" fill="var(--accent)" />`;
+    }
+  }
+  svg += `</svg>`;
+  return svg;
+}
+
+function showChordDiagram(chordName) {
+  const diagram = getChordDiagram(chordName);
+  const modal = document.getElementById('chord-diagram-modal');
+  const titleEl = document.getElementById('chord-diagram-title');
+  const svgEl = document.getElementById('chord-diagram-svg');
+  const noteEl = document.getElementById('chord-diagram-note');
+  if (!modal || !titleEl || !svgEl) return;
+  titleEl.textContent = chordName;
+  if (!diagram) {
+    svgEl.innerHTML = '';
+    noteEl.textContent = "Couldn't work out a fingering for this chord.";
+    noteEl.style.display = 'block';
+  } else {
+    svgEl.innerHTML = _renderChordDiagramSVG(diagram);
+    const notes = [];
+    if (diagram.bass) notes.push(`Bass note: ${diagram.bass}`);
+    if (diagram.isApproximate) notes.push('Approximate voicing — shown as the closest common shape.');
+    noteEl.textContent = notes.join('  •  ');
+    noteEl.style.display = notes.length ? 'block' : 'none';
+  }
+  modal.style.display = 'flex';
+  _animateModalIn(modal);
+  pushState();
+}
+
+function closeChordDiagramModal() {
+  _animateModalOut(document.getElementById('chord-diagram-modal'));
 }
 
 function updateCapoDisplay() {
@@ -4473,15 +4657,27 @@ function _itemsToLines(items) {
     const lineItems = lineMap.get(y).slice().sort((a, b) => a.transform[4] - b.transform[4]);
     let line = '';
     let cursorCol = 0;
+    let lastRawEndX = null; // end x-position (in points) of the previously placed item
     for (const it of lineItems) {
       const x = it.transform[4] - leftMargin;
-      const targetCol = Math.round(x / charWidth);
+      let targetCol = Math.round(x / charWidth);
+      // Narrow glyphs (e.g. "I") advance the rounded cursor by their full
+      // string length, which overshoots their true rendered width — the next
+      // item's real position can then round to a column at-or-before the
+      // cursor, silently eating the space between two separate words. If the
+      // source PDF had genuine horizontal separation here, force at least
+      // one space regardless of what the column rounding alone would give.
+      if (lastRawEndX !== null && x - lastRawEndX > 1.0) {
+        targetCol = Math.max(targetCol, cursorCol + 1);
+      }
       if (targetCol > cursorCol) {
         line += ' '.repeat(targetCol - cursorCol);
         cursorCol = targetCol;
       }
       line += it.str;
       cursorCol += it.str.length;
+      const itemWidth = it.width || (it.str.length * charWidth);
+      lastRawEndX = x + itemWidth;
     }
     return line.replace(/ {40,}/g, ' '.repeat(40)).replace(/[ \t]+$/, '');
   });
