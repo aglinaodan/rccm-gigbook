@@ -1603,17 +1603,15 @@ button:active::after { background: rgba(255,255,255,0.12); }
   </div>
 </div>
 
-<!-- CHORD DIAGRAM MODAL -->
-<div id="chord-diagram-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-sheet" style="min-height:0;max-width:320px;text-align:center;">
-    <div class="modal-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-      <h3 id="chord-diagram-title" style="color:var(--lyrics-color);font-size:20px;font-weight:800;margin:0;">C</h3>
-      <button onclick="closeChordDiagramModal()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:20px;padding:4px;">✕</button>
-    </div>
-    <div id="chord-diagram-svg" style="display:flex;justify-content:center;margin:8px 0;"></div>
-    <p id="chord-diagram-note" style="display:none;color:var(--text-secondary);font-size:12px;margin:6px 0 4px;line-height:1.5;"></p>
+<!-- CHORD DIAGRAM POPOVER — floats above/below the tapped chord instead of a full modal -->
+<div id="chord-popover" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:12px 14px;z-index:9600;box-shadow:0 8px 28px rgba(20,8,8,0.4);width:168px;text-align:center;" onclick="event.stopPropagation()">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+    <h3 id="chord-diagram-title" style="color:var(--lyrics-color);font-size:17px;font-weight:800;margin:0;">C</h3>
+    <button onclick="closeChordDiagramModal()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px;line-height:1;">✕</button>
   </div>
+  <div id="chord-diagram-svg" style="display:flex;justify-content:center;"></div>
+  <p id="chord-diagram-note" style="display:none;color:var(--text-secondary);font-size:10.5px;margin:2px 0 0;line-height:1.4;"></p>
+  <div id="chord-popover-caret" style="position:absolute;width:10px;height:10px;background:var(--surface-1);border:1px solid var(--border-subtle);transform:rotate(45deg);"></div>
 </div>
 
 <!-- KEY SELECTION MODAL -->
@@ -1975,7 +1973,7 @@ function handleBackButton() {
     if (_isVisible('create-song-modal')) { closeCreateSongModal(); return; }
     if (_isVisible('create-setlist-modal')) { closeCreateSetlistModal(); return; }
     if (_isVisible('key-modal')) { closeKeyModal(); return; }
-    if (_isVisible('chord-diagram-modal')) { closeChordDiagramModal(); return; }
+    if (document.getElementById('chord-popover')?.style.display !== 'none') { closeChordDiagramModal(); return; }
     if (_isVisible('user-edit-modal')) { closeUserEditModal(); return; }
     if (_isVisible('name-edit-modal')) { closeNameEditModal(); return; }
     if (_isVisible('song-selector-modal')) { closeSongSelectorModal(); return; }
@@ -3368,7 +3366,7 @@ function transposeChordLine(line, fromKey, toKey) {
     if (!CHORD_TOKEN.test(trimmed)) return escHtml(token);
     const displayChord = semitones === 0 ? trimmed : transposeChord(trimmed, semitones, preferFlats);
     const safe = escHtml(displayChord);
-    return `<span class="chord-token" onclick="showChordDiagram('${displayChord.replace(/'/g, "")}')" role="button" tabindex="0">${safe}</span>`;
+    return `<span class="chord-token" onclick="showChordDiagram('${displayChord.replace(/'/g, "")}', this)" role="button" tabindex="0">${safe}</span>`;
   }).join('');
 }
 
@@ -3509,13 +3507,14 @@ function _renderChordDiagramSVG(diagram) {
   return svg;
 }
 
-function showChordDiagram(chordName) {
+function showChordDiagram(chordName, chordEl) {
   const diagram = getChordDiagram(chordName);
-  const modal = document.getElementById('chord-diagram-modal');
+  const popover = document.getElementById('chord-popover');
   const titleEl = document.getElementById('chord-diagram-title');
   const svgEl = document.getElementById('chord-diagram-svg');
   const noteEl = document.getElementById('chord-diagram-note');
-  if (!modal || !titleEl || !svgEl) return;
+  const caret = document.getElementById('chord-popover-caret');
+  if (!popover || !titleEl || !svgEl) return;
   titleEl.textContent = chordName;
   if (!diagram) {
     svgEl.innerHTML = '';
@@ -3525,17 +3524,49 @@ function showChordDiagram(chordName) {
     svgEl.innerHTML = _renderChordDiagramSVG(diagram);
     const notes = [];
     if (diagram.bass) notes.push(`Bass note: ${diagram.bass}`);
-    if (diagram.isApproximate) notes.push('Approximate voicing — shown as the closest common shape.');
+    if (diagram.isApproximate) notes.push('Approximate voicing — closest common shape.');
     noteEl.textContent = notes.join('  •  ');
     noteEl.style.display = notes.length ? 'block' : 'none';
   }
-  modal.style.display = 'flex';
-  _animateModalIn(modal);
-  pushState();
+
+  // Position the popover near the tapped chord — above it by default, below
+  // if there isn't enough room above (e.g. a chord near the top of the screen).
+  popover.style.display = 'block';
+  popover.style.visibility = 'hidden'; // measure before placing, avoids a flash in the wrong spot
+  const popW = popover.offsetWidth, popH = popover.offsetHeight;
+  const anchor = chordEl ? chordEl.getBoundingClientRect() : { left: window.innerWidth/2 - 20, right: window.innerWidth/2 + 20, top: window.innerHeight/2, bottom: window.innerHeight/2 };
+  const gap = 10;
+  let left = anchor.left + (anchor.width || (anchor.right - anchor.left))/2 - popW/2;
+  left = Math.max(8, Math.min(left, window.innerWidth - popW - 8));
+  let top, caretTop, pointDown;
+  if (anchor.top - gap - popH > 60) {
+    // Enough room above — place it there, caret points down at the chord
+    top = anchor.top - gap - popH;
+    pointDown = true;
+  } else {
+    // Not enough room above — place it below instead, caret points up
+    top = anchor.bottom + gap;
+    pointDown = false;
+  }
+  popover.style.left = left + 'px';
+  popover.style.top = top + 'px';
+  if (caret) {
+    const caretLeft = Math.max(10, Math.min(popW - 18, (anchor.left + (anchor.width||8)/2) - left - 5));
+    caret.style.left = caretLeft + 'px';
+    if (pointDown) {
+      caret.style.bottom = '-6px'; caret.style.top = 'auto';
+      caret.style.borderTop = 'none'; caret.style.borderLeft = 'none';
+    } else {
+      caret.style.top = '-6px'; caret.style.bottom = 'auto';
+      caret.style.borderBottom = 'none'; caret.style.borderRight = 'none';
+    }
+  }
+  popover.style.visibility = 'visible';
 }
 
 function closeChordDiagramModal() {
-  _animateModalOut(document.getElementById('chord-diagram-modal'));
+  const popover = document.getElementById('chord-popover');
+  if (popover) popover.style.display = 'none';
 }
 
 function updateCapoDisplay() {
@@ -3956,6 +3987,17 @@ function stopAutoScroll() {
   if (autoScrollAnimFrame) { cancelAnimationFrame(autoScrollAnimFrame); autoScrollAnimFrame = null; }
   autoScrollAccumulator = 0;
 }
+
+// Close the chord diagram popover when tapping outside it, or when scrolling
+// (it's fixed-position and would otherwise drift away from the chord it's
+// anchored to as the sheet scrolls underneath it).
+document.addEventListener('click', (e) => {
+  const popover = document.getElementById('chord-popover');
+  if (!popover || popover.style.display === 'none') return;
+  const clickedChord = e.target.closest('.chord-token');
+  if (!clickedChord && !popover.contains(e.target)) closeChordDiagramModal();
+});
+document.getElementById('main-content')?.addEventListener('scroll', closeChordDiagramModal, { passive: true });
 
 // Close filter menus when tapping outside them
 document.addEventListener('click', (e) => {
