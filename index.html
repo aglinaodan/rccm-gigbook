@@ -1604,7 +1604,7 @@ button:active::after { background: rgba(255,255,255,0.12); }
 </div>
 
 <!-- CHORD DIAGRAM POPOVER — floats above/below the tapped chord instead of a full modal -->
-<div id="chord-popover" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:12px 14px;z-index:9600;box-shadow:0 8px 28px rgba(20,8,8,0.4);width:168px;text-align:center;" onclick="event.stopPropagation()">
+<div id="chord-popover" style="display:none;position:fixed;background:var(--surface-1);border:1px solid var(--border-subtle);border-radius:14px;padding:12px 14px;z-index:9600;box-shadow:0 8px 28px rgba(20,8,8,0.4);width:190px;text-align:center;" onclick="event.stopPropagation()">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
     <h3 id="chord-diagram-title" style="color:var(--lyrics-color);font-size:17px;font-weight:800;margin:0;">C</h3>
     <button onclick="closeChordDiagramModal()" style="background:transparent;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:2px;line-height:1;">✕</button>
@@ -3282,7 +3282,7 @@ function closeSongSheet() {
 // CHORD/LYRIC PARSER (Bracket-Free, Regex-Based)
 // ============================================================
 const SECTION_REGEX = /^(VERSE\s*\d*|PRE-?CHORUS|CHORUS|BRIDGE|OUTRO|INTRO|TAG|REFRAIN|INTERLUDE|HOOK|VAMP)[\s:]*$/i;
-const CHORD_TOKEN = /^[A-G](#|b)?(m|min|maj|M|dim|aug|sus[24]?|add\d+|6|7|9|11|13)*(\/[A-G](#|b)?)?$/;
+const CHORD_TOKEN = /^[A-G](#|b)?(m|min|maj|ma|M|dim|aug|sus[24]?|add\d+|2|4|6|7|9|11|13)*(\/[A-G](#|b)?)?$/;
 
 function isChordLine(line) {
   const trimmed = line.trim();
@@ -3385,7 +3385,7 @@ const OPEN_CHORD_SHAPES = {
   'E':     [0,2,2,1,0,0],    'Em':    [0,2,2,0,0,0],   'E7':    [0,2,0,1,0,0],
   'Emaj7': [0,2,1,1,0,0],    'Em7':   [0,2,0,0,0,0],   'Esus4': [0,2,2,2,0,0],
   'G':     [3,2,0,0,0,3],    'Gmaj7': [3,2,0,0,0,2],   'G7':    [3,2,0,0,0,1],
-  'Gsus4': [3,2,0,0,1,3],
+  'Gsus4': [3,2,0,0,1,3],    'Gsus2': [3,0,0,0,3,3],
   'A':     [-1,0,2,2,2,0],   'Am':    [-1,0,2,2,1,0],  'A7':    [-1,0,2,0,2,0],
   'Amaj7': [-1,0,2,1,2,0],   'Am7':   [-1,0,2,0,1,0],
   'Asus2': [-1,0,2,2,0,0],   'Asus4': [-1,0,2,2,3,0],
@@ -3393,6 +3393,7 @@ const OPEN_CHORD_SHAPES = {
 
 // Movable barre-shape templates (offsets from the barre fret N), used for any
 // root/quality with no idiomatic open shape — e.g. F, B, and all sharp/flat roots.
+// Every shape here is a standard, verified voicing — not a guess.
 const BARRE_SHAPES = {
   E: { // root on the low-E string; string6 = N
     '':     [0,2,2,1,0,0],
@@ -3400,6 +3401,9 @@ const BARRE_SHAPES = {
     '7':    [0,2,0,1,0,0],
     'm7':   [0,2,0,0,0,0],
     'maj7': [0,2,1,1,0,0],
+    'sus4': [0,2,2,2,0,0],
+    '6':    [0,2,2,1,2,0],
+    'add9': [0,2,2,1,0,2],
   },
   A: { // root on the A string; string6 muted
     '':     [null,0,2,2,2,0],
@@ -3407,20 +3411,44 @@ const BARRE_SHAPES = {
     '7':    [null,0,2,0,2,0],
     'm7':   [null,0,2,0,1,0],
     'maj7': [null,0,2,1,2,0],
+    'sus4': [null,0,2,2,3,0],
+    'sus2': [null,0,2,2,0,0],
+    '6':    [null,0,2,2,2,2],
   }
+};
+
+// Hand-verified common slash-chord (altered bass) voicings — these are real,
+// standard fingerings guitarists actually use, not the plain chord with a
+// text note. Anything not listed here falls back to the base chord shape
+// with the bass noted separately, rather than guessing a fingering.
+const SLASH_CHORD_SHAPES = {
+  'C/E':   [0,3,2,0,1,0],
+  'C/G':   [3,-1,2,0,1,0],
+  'D/F#':  [2,-1,0,2,3,2],
+  'D/A':   [-1,0,0,2,3,2],
+  'G/B':   [-1,2,0,0,0,3],
+  'G/D':   [-1,-1,0,0,0,3],
+  'Em/B':  [-1,2,2,0,0,0],
+  'Am/C':  [-1,3,2,2,1,0],
+  'F/C':   [-1,3,3,2,1,1],
 };
 
 function _normalizeChordQuality(q) {
   if (/^(maj7|M7)/.test(q)) return 'maj7';
+  if (/^(ma(j)?9)/.test(q)) return 'maj7'; // closest real shape for a 9th extension
   if (/^(m7|min7)/.test(q)) return 'm7';
+  if (/^(sus4|4)$/.test(q)) return 'sus4';
+  if (/^(sus2|2)$/.test(q)) return 'sus2';
+  if (/^6$/.test(q)) return '6';
+  if (/^add9$/.test(q)) return 'add9';
   if (/^(m|min)(?!aj)/.test(q)) return 'm';
   if (/^7/.test(q)) return '7';
-  return ''; // everything else (sus, add, dim, aug, 6, 9...) approximated with the major shape
+  return ''; // everything else (sus2, dim, aug, 9, 11, 13...) approximated with the major/minor shape
 }
 
 // Parses a chord symbol into { root, quality, bass, isApproximate }, builds a
-// fretboard diagram (frets + optional barre), preferring a real open shape
-// and falling back to a movable barre shape for anything else.
+// fretboard diagram (frets + optional barre), preferring a real open shape,
+// then a verified slash-chord voicing, then a movable barre shape.
 function getChordDiagram(chordName) {
   const parts = chordName.split('/');
   const main = parts[0];
@@ -3430,25 +3458,48 @@ function getChordDiagram(chordName) {
   const root = rootMatch[0];
   const qualityRaw = main.slice(root.length);
 
-  // 1. Try an exact idiomatic open shape first (covers common sus2/sus4 too)
+  // 1. A verified slash-chord voicing beats everything else — it's the real
+  // fingering for that exact bass note, not an approximation.
+  if (bass) {
+    const slashFrets = SLASH_CHORD_SHAPES[root + qualityRaw + '/' + bass];
+    if (slashFrets) {
+      return { root, quality: qualityRaw, bass, frets: slashFrets.slice(), baseFret: 1, barre: null, isApproximate: false };
+    }
+  }
+
+  // 2. An exact idiomatic open shape (covers common sus2/sus4/4/2 shorthand too)
   let openKey = root + qualityRaw;
-  if (/^sus$/.test(qualityRaw)) openKey = root + 'sus4'; // shorthand "Asus" means Asus4
+  if (/^sus$/.test(qualityRaw) || /^4$/.test(qualityRaw)) openKey = root + 'sus4'; // "Asus" / "A4" both mean Asus4
+  else if (/^2$/.test(qualityRaw)) openKey = root + 'sus2'; // "G2" means Gsus2
   let frets = OPEN_CHORD_SHAPES[openKey];
-  let isApproximate = !frets && qualityRaw && !/^(sus2|sus4|maj7|m7|min7|m|min|7)$/.test(qualityRaw);
   if (frets) {
     return { root, quality: qualityRaw, bass, frets: frets.slice(), baseFret: 1, barre: null, isApproximate: false };
   }
 
-  // 2. Fall back to a movable barre shape
+  // 3. Fall back to a movable barre shape — try the preferred side first,
+  // then the other side, then approximate with the plain major/minor shape
+  // only if truly nothing else is available.
   const quality = _normalizeChordQuality(qualityRaw);
-  isApproximate = quality === '' && qualityRaw !== ''; // e.g. sus/add/dim/aug shown as major-shape approximation
   const rootIdx = getNoteIndex(root);
   if (rootIdx === -1) return null;
   const eFret = (rootIdx - getNoteIndex('E') + 12) % 12;
   const aFret = (rootIdx - getNoteIndex('A') + 12) % 12;
-  const useE = eFret <= aFret;
-  const N = useE ? eFret : aFret;
-  const template = useE ? BARRE_SHAPES.E[quality] : BARRE_SHAPES.A[quality];
+  let useE = eFret <= aFret;
+  let N = useE ? eFret : aFret;
+  let template = useE ? BARRE_SHAPES.E[quality] : BARRE_SHAPES.A[quality];
+  let isApproximate = false;
+  if (!template) {
+    useE = !useE;
+    N = useE ? eFret : aFret;
+    template = useE ? BARRE_SHAPES.E[quality] : BARRE_SHAPES.A[quality];
+  }
+  if (!template) {
+    useE = eFret <= aFret;
+    N = useE ? eFret : aFret;
+    const majorMinorQuality = /^(m|min)(?!aj)/.test(qualityRaw) ? 'm' : '';
+    template = useE ? BARRE_SHAPES.E[majorMinorQuality] : BARRE_SHAPES.A[majorMinorQuality];
+    isApproximate = true;
+  }
   const computedFrets = template.map(off => off === null ? -1 : off + N);
   return {
     root, quality: qualityRaw, bass,
@@ -3461,15 +3512,17 @@ function getChordDiagram(chordName) {
 
 function _renderChordDiagramSVG(diagram) {
   const { frets, baseFret, barre } = diagram;
-  const W = 200, H = 230;
-  const marginX = 30, marginTop = 44, fretH = 32, stringGap = 28;
+  const W = 220, H = 230;
+  const marginX = 46, marginTop = 44, fretH = 32, stringGap = 28;
   const numFrets = 4;
   const stringX = i => marginX + i * stringGap;
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:220px;">`;
 
-  // Fret number label (for barre/moved shapes)
+  // Fret number label (for barre/moved shapes) — right-aligned with clear
+  // space before the grid, so it never collides with the fretboard lines
+  // regardless of whether it reads "3fr" or "10fr".
   if (baseFret > 1) {
-    svg += `<text x="${marginX - 20}" y="${marginTop + fretH * 0.75}" font-size="13" fill="var(--text-secondary)" font-family="sans-serif">${baseFret}fr</text>`;
+    svg += `<text x="${marginX - 10}" y="${marginTop + fretH * 0.75}" font-size="13" fill="var(--text-secondary)" font-family="sans-serif" text-anchor="end">${baseFret}fr</text>`;
   }
 
   // Nut (thick line) if this is an open-position shape, else a plain top fret line
